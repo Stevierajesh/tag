@@ -1,0 +1,24 @@
+{
+  "name": "tag",
+  "version": "1.0.0",
+  "description": "Tag game that users can download, play tag and have locations show up every 5 minutes for 30 seconds where the players can use AR to see the locations of people. Feature where the circle shrinks at the same 5 minute mark.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stevierajesh/tag.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Stevierajesh/tag/issues"
+  },
+  "homepage": "https://github.com/Stevierajesh/tag#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.18.3"
+  }
+}
