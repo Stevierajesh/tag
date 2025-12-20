@@ -4,6 +4,9 @@ import { gameManager } from './game_engine/gameSessionManagement';
 const { json } = require('express');
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
+const EVENTTYPES = ["CREATE_GAME", "JOIN_GAME", "LOCATION_UPDATE", "LEAVE_GAME", "TAG_ATTEMPT", "REVEAL_START", "REVEAL_END"];
+
+
 
 console.log("WebSocket server running on ws://localhost:8080");
 server.on('connection', socket => {
@@ -14,33 +17,12 @@ server.on('connection', socket => {
 
         const data = JSON.parse(message);
 
-
-        switch (data.type){
-            case "CREATE_GAME":
-                //function call here, that will start the game and have initial values sent
-                gameManager.gameStart(data.playerID);
-                break;
-            case "JOIN_GAME":
-                
-                break;
-            case "LOCATION_UPDATE":
-                
-                break;
-            case "LEAVE_GAME":
-                
-                break;
-            case "TAG_ATTEMPT":
-                
-                break;
-            case "REVEAL_START":
-                
-                break;
-            case "REVEAL_END":
-                
-                break;
-            default:
-                console.log("ERROR - UNKNOWN EVENT:" + data.type);
-                break;
+        if (EVENTTYPES.includes(data.eventType)) {
+            const response = gameManager(data);
+            socket.send(JSON.stringify(response));
+        } else {
+            console.log("Invalid event type received: " + data.eventType);
+            socket.send(JSON.stringify({ error: "Invalid event type" }));
         }
 
     });
