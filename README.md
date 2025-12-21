@@ -6,6 +6,9 @@ Tag game that users can download, play tag and have locations show up every 5 mi
 
 - [Lucidchart Diagram](https://lucid.app/lucidchart/af77e38f-d24e-40e7-9b81-f39b63f91eff/edit?viewport_loc=-572%2C-34%2C3326%2C1662%2C0_0&invitationId=inv_79efcca3-b16a-4b88-8097-694f88ad23bb)
 
+
+UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREATED
+
 ## Websocket Event Types
 
 ### CREATE_GAME
@@ -19,6 +22,7 @@ Tag game that users can download, play tag and have locations show up every 5 mi
 ### JOIN_GAME
 ```json
 {
+    "playerId": "p43",
     "type": "JOIN_GAME",
     "gameId": "abc123"
 }
@@ -27,6 +31,8 @@ Tag game that users can download, play tag and have locations show up every 5 mi
 ### START_GAME
 ```json
 {
+    "playerId": "p43",
+    "gameId": "p43",
     "type": "START_GAME"
 }
 ```
