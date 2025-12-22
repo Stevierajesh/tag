@@ -1,4 +1,4 @@
-import { prototype } from "ws";
+
 
 
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
@@ -12,6 +12,7 @@ function checkGameExists(gameID) {
 function lookForGameWithPlayer(identification) {
 
     if (players.has(identification)) {
+        //console.log("Found game for player: " + identification);
         let playerInfo = players.get(identification);
         return playerInfo.gameID;
     }
@@ -23,9 +24,12 @@ function gameCreate(playerID, circleRadius, center) {
     const gameID = Math.random().toString(36).substring(2, 12);
     console.log("Game started by player: " + playerID);
     //Initialize game state
+    
+
+    
 
     const game = {
-        gameId: gameID,
+        gameID: gameID,
         phase: "LOBBY",
         players: [
             {
@@ -40,8 +44,9 @@ function gameCreate(playerID, circleRadius, center) {
         circleRadius: circleRadius
     }
 
-    players.set(playerID, {gameID: gameID, location: { lat: null, lng: null, alt: null }});
-    return gameID;
+    players.set(playerID, {gameID: game.gameID, location: { lat: null, lng: null, alt: null }});
+    games.set(game.gameID, game);
+    return game;
 }
 
 function deleteGame(gameID) {
@@ -75,6 +80,17 @@ function leaveGame(gameID, playerID) {
 }
 
 function updateLocation(gameID, playerID, location) {
+    
+    try {
+        if (checkGameExists(gameID) == false) {
+            console.log("ERROR: GAME DOES NOT EXIST");
+            return false;
+        }
+    } catch (error) {
+        console.log("ERROR: GAME DOES NOT EXIST");
+        return false;
+    }
+
     let playersArray = games.get(gameID).players;
 
     //This is very inefficient, will fix later
@@ -88,13 +104,14 @@ function updateLocation(gameID, playerID, location) {
     players.set(playerID, {gameID: gameID, location: location});
     //Suggested Fix End
 
-    
+
     games.set(gameID, { ...games.get(gameID), players: playersArray });
     console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
     return true;
 }
 
 function gameStart(gameID) {
+    console.log("Starting Game..." + gameID);    
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
@@ -147,12 +164,12 @@ export function gameManager(data) {
 
     let game = null;
 
-    switch (data.eventType) {
+    switch (data.type) {
         case "CREATE_GAME":
             game = gameCreate(data.playerID, data.circleRadius, data.circleCenter);
             games.set(data.gameID, data);
-            console.log(`Game created with ID: ${game.gameId}`);
-            return { gameID: game.gameId };
+            console.log(`Game created with ID: ${game.gameID}`);
+            return { gameID: game.gameID };
         case "JOIN_GAME":
             //figure authentication
             let status = joinGame(data.gameID, data.playerID);
@@ -163,6 +180,7 @@ export function gameManager(data) {
         //     return joinGame(data.gameID, data.playerID);
         case "START_GAME":
             let gameID = lookForGameWithPlayer(data.playerID);
+            console.log("all players: " + JSON.stringify(Array.from(players)));
             gameStart(gameID);
             break;
         case "LOCATION_UPDATE":
@@ -172,7 +190,8 @@ export function gameManager(data) {
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
             break;
         default:
-            return { error: "Invalid event type" };
+            console.log("Invalid event type received: " + data.type);  
+            return { error: `Invalid event type: ${data.type}` };
     }
 }
 
