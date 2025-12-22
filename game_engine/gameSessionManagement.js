@@ -110,6 +110,21 @@ function updateLocation(gameID, playerID, location) {
     return true;
 }
 
+function getLocations(gameID) {
+    if (checkGameExists(gameID) == false) {
+        console.log("ERROR: GAME DOES NOT EXIST");
+        return false;
+    }
+
+    let playersArray = games.get(gameID).players;
+    let locations = playersArray.map(player => ({
+        playerID: player.playerID,
+        location: player.location
+    }));
+
+    return locations;
+}
+
 function gameStart(gameID) {
     console.log("Starting Game..." + gameID);    
     if (checkGameExists(gameID) == false) {
@@ -141,7 +156,7 @@ function joinGame(gameID, newplayerID) {
         }
     });
 
-    player = {
+    let player = {
         playerID: newplayerID,
         status: "running",
         isAdmin: false,
@@ -189,6 +204,12 @@ export function gameManager(data) {
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
             break;
+        case "GET_LOCATIONS":
+            let locations = getLocations(lookForGameWithPlayer(data.playerID));
+            if (locations == false) {
+                return { error: "game does not exist" };
+            }
+            return { locations: locations };
         default:
             console.log("Invalid event type received: " + data.type);  
             return { error: `Invalid event type: ${data.type}` };
