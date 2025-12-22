@@ -3,11 +3,21 @@ import { prototype } from "ws";
 
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
 var games = new Map();
+var players = new Map();
 
 function checkGameExists(gameID) {
     return games.has(gameID);
 }
 
+function lookForGameWithPlayer(identification) {
+
+    if (players.has(identification)) {
+        let playerInfo = players.get(identification);
+        return playerInfo.gameID;
+    }
+
+    return null;
+}
 
 function gameCreate(playerID, circleRadius, center) {
     const gameID = Math.random().toString(36).substring(2, 12);
@@ -29,7 +39,9 @@ function gameCreate(playerID, circleRadius, center) {
         circleCenter: center,
         circleRadius: circleRadius
     }
-    return game;
+
+    players.set(playerID, {gameID: gameID, location: { lat: null, lng: null, alt: null }});
+    return gameID;
 }
 
 function deleteGame(gameID) {
@@ -57,19 +69,29 @@ function leaveGame(gameID, playerID) {
     if (playersArray.length == 0) {
         deleteGame(gameID);
     }
+
+    players.delete(playerID);
     return true;
 }
 
 function updateLocation(gameID, playerID, location) {
     let playersArray = games.get(gameID).players;
 
+    //This is very inefficient, will fix later
     playersArray.forEach(player => {
         if (player.playerID == playerID) {
             player.location = location;
-            console.log(`Player: ${playerID} location updated to Lat: ${location.lat} Lng: ${location.lng} Alt: ${location.alt}`);
-            return true;
         }
     });
+
+    //Suggested Fix, make location based off of players map instead of in game object
+    players.set(playerID, {gameID: gameID, location: location});
+    //Suggested Fix End
+
+    
+    games.set(gameID, { ...games.get(gameID), players: playersArray });
+    console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
+    return true;
 }
 
 function gameStart(gameID) {
@@ -88,6 +110,12 @@ function gameStart(gameID) {
 
 function joinGame(gameID, newplayerID) {
     //ERROR HERE
+
+    if (checkGameExists(gameID) == false) {
+        console.log("ERROR: GAME DOES NOT EXIST");
+        return false;
+    }
+    
     let playersArray = games.get(gameID).players;
     //Saftey Check, Might remove, On Possiblity of Lifetime Player ID linked to account. 
     playersArray.forEach(player => {
@@ -95,11 +123,6 @@ function joinGame(gameID, newplayerID) {
             return true;
         }
     });
-
-    if (checkGameExists(gameID) == false) {
-        console.log("ERROR: GAME DOES NOT EXIST");
-        return false;
-    }
 
     player = {
         playerID: newplayerID,
@@ -115,6 +138,7 @@ function joinGame(gameID, newplayerID) {
     playersArray.push(player);
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
+    players.set(newplayerID, {gameID: gameID, location: { lat: null, lng: null, alt: null }});
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
 }
@@ -127,6 +151,7 @@ export function gameManager(data) {
         case "CREATE_GAME":
             game = gameCreate(data.playerID, data.circleRadius, data.circleCenter);
             games.set(data.gameID, data);
+            console.log(`Game created with ID: ${game.gameId}`);
             return { gameID: game.gameId };
         case "JOIN_GAME":
             //figure authentication
@@ -137,14 +162,14 @@ export function gameManager(data) {
             break;
         //     return joinGame(data.gameID, data.playerID);
         case "START_GAME":
-                gameStart(data.gameID);
+            let gameID = lookForGameWithPlayer(data.playerID);
+            gameStart(gameID);
             break;
         case "LOCATION_UPDATE":
-
-            updateLocation(data.gameID, data.playerID, data.location);
+            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
             break;
         case "LEAVE_GAME":
-            leaveGame(data.gameID, data.playerID);
+            leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
             break;
         default:
             return { error: "Invalid event type" };
