@@ -2,7 +2,7 @@ const { gameManager } = require('./game_engine/gameSessionManagement');
 const { json } = require('express');
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
-const EVENTTYPES = ["CREATE_GAME", "JOIN_GAME", "LOCATION_UPDATE", "LEAVE_GAME", "TAG_ATTEMPT", "START_GAME"];
+const EVENTTYPES = ["CREATE_GAME", "JOIN_GAME", "LOCATION_UPDATE", "LEAVE_GAME", "TAG_ATTEMPT", "START_GAME", "GET_LOCATIONS"];
 
 
 
