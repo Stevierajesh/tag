@@ -15,14 +15,14 @@ UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREA
 ```json
 {
     "type": "CREATE_GAME",
-    "playerId": "p42"
+    "playerID": "p42"
 }
 ```
 
 ### JOIN_GAME
 ```json
 {
-    "playerId": "p43",
+    "playerID": "p43",
     "type": "JOIN_GAME",
     "gameId": "abc123"
 }
@@ -31,7 +31,7 @@ UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREA
 ### START_GAME
 ```json
 {
-    "playerId": "p43",
+    "playerID": "p43",
     "type": "START_GAME"
 }
 ```
@@ -58,13 +58,13 @@ UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREA
     "phase": "HIDE",
     "circleRadius": 320,
     "you": {
-        "playerId": "p42",
+        "playerID": "p42",
         "role": "RUNNER",
         "isAdmin": false
     },
     "players": [
-        { "playerId": "p17", "status": "INFECTED" },
-        { "playerId": "p42", "status": "RUNNER" }
+        { "playerID": "p17", "status": "INFECTED" },
+        { "playerID": "p42", "status": "RUNNER" }
     ],
     "nextRevealAt": 1740000300
 }
