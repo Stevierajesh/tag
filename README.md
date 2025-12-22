@@ -32,7 +32,6 @@ UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREA
 ```json
 {
     "playerId": "p43",
-    "gameId": "p43",
     "type": "START_GAME"
 }
 ```
@@ -40,6 +39,7 @@ UPDATE: PLAYER ID WILL BE A PERMANENT ID ASSIGNED TO PLAYER WHEN ACCOUNT IS CREA
 ### LOCATION_UPDATE
 ```json
 {
+    "playerID": "p43",
     "type": "LOCATION_UPDATE",
     "location": {
         "lat": 40.21049935750206,
