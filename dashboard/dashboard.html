@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tag Server Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+
+<body>
+
+    <header>
+        <h1>TAG — Live Server Dashboard</h1>
+        <span id="server-dot" class="status-dot"></span>
+        <span id="server-text" class="status-text">Connecting…</span>
+
+    </header>
+
+    <main>
+        <!-- LEFT: Games List -->
+        <section class="panel games-panel">
+            <h2>Active Games</h2>
+            <ul id="games-list">
+                <!-- populated by dashboard.js -->
+                <!--
+      <li class="game-item active">
+        <div class="game-id">game_ab12cd</div>
+        <div class="game-meta">HIDE • 4 players</div>
+      </li>
+      -->
+            </ul>
+        </section>
+
+        <!-- CENTER: Game Details -->
+        <section class="panel game-details">
+            <h2>Game Details</h2>
+
+            <div class="details-grid">
+                <div><label>Game ID</label><span id="detail-game-id">—</span></div>
+                <div><label>Phase</label><span id="detail-phase">—</span></div>
+                <div><label>Circle Radius</label><span id="detail-radius">—</span></div>
+                <div><label>Center</label><span id="detail-center">—</span></div>
+                <div><label>Timer</label><span id="detail-timer">—</span></div>
+            </div>
+
+            <h3>Players</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Admin</th>
+                        <th>Lat</th>
+                        <th>Lng</th>
+                        <th>Alt</th>
+                        <th>Socket</th>
+                    </tr>
+                </thead>
+                <tbody id="players-table">
+                    <!-- populated by dashboard.js -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- RIGHT: Raw State -->
+        <section class="panel raw-panel">
+            <h2>Raw State</h2>
+            <pre id="raw-json">
+{
+  "games": {},
+  "players": {},
+  "playerSockets": {}
+}
+    </pre>
+        </section>
+    </main>
+
+    <footer>
+        <span>Refresh: 1s</span>
+        <span>Memory Only • Redis Planned</span>
+    </footer>
+
+    <script src="dashboard.js"></script>
+</body>
+
+</html>
