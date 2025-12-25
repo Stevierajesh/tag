@@ -238,6 +238,25 @@ Sent when a tag is successfully registered.
 }
 ```
 
+### PLAYERS_UPDATE
+
+Broadcast to clients with current player locations during reveal phases.
+
+```json
+{
+    "type": "PLAYERS_UPDATE",
+    "locations": [
+        {
+            "playerID": "p42",
+            "lat": 40.21049935750206,
+            "lng": -83.02927517362363,
+            "alt": 276.4463550494984
+        }
+    ],
+    "timestamp": 1739999999
+}
+```
+
 ### LEAVE_GAME
 
 Removes a player from their current game.
