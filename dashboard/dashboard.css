@@ -165,6 +165,18 @@ footer {
   color: var(--muted);
 }
 
+.phase {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.phase-LOBBY { background: #2f81f7; color: white; }
+.phase-HIDE  { background: #f85149; color: white; }
+.phase-SEEK  { background: #3fb950; color: white; }
+.phase-END   { background: #8b949e; color: black; }
+
 
 /* =========================
    Mobile / Small Screens

@@ -4,8 +4,11 @@
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
 export var games = new Map();
 
-var hideTime = 300000; //5 Minutes
-var seekTime = 30000 //30 seconds
+var gameTimers = new Map();
+
+var hideTime = 0; //10 seconds
+var seekTime = 10000 //10 seconds
+var sendTime = 200; //0.5 seconds
 
 //MUST OPTIMIZE LATER - FOR UPDATING LOCATIONS IN O(1) TIME.
 export var players = new Map();
@@ -27,12 +30,12 @@ export function lookForGameWithPlayer(identification) {
 }
 //FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
 function gameCreate(playerID, circleRadius, center, socket) {
-    const gameID = Math.random().toString(36).substring(2, 12);
+    const gameID = Math.random().toString(36).substring(2, 6);
     console.log("Game started by player: " + playerID);
     //Initialize game state
-    
 
-    
+
+
 
     const game = {
         gameID: gameID,
@@ -40,9 +43,9 @@ function gameCreate(playerID, circleRadius, center, socket) {
         players: [
             {
                 playerID: playerID, status: "infected", isAdmin: true, location: {
-                    lat: null,
-                    lng: null,
-                    alt: null
+                    lat: 0,
+                    lon: 0,
+                    alt: 0
                 }
             }
         ],
@@ -52,7 +55,14 @@ function gameCreate(playerID, circleRadius, center, socket) {
         sendTimer: null
     }
 
-    players.set(playerID, {gameID: game.gameID, location: { lat: null, lng: null, alt: null }});
+    gameTimers.set(gameID, {
+        hideTimer: null,
+        seekTimer: null,
+        intervalTime: null
+        // future: shrinkInterval, revealInterval, etc.
+    });
+
+    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 } });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -65,7 +75,21 @@ function deleteGame(gameID) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
+    //delete ALL mentions of players
+    for (const player of games.get(gameID).players) {
+        playerSockets.delete(player.playerID);
+        players.delete(player.playerID);
+    }
+
+
+    if (gameTimers.has(gameID)) {
+        clearTimeout(gameTimers.get(gameID));
+        gameTimers.delete(gameID);
+    }
+
     games.delete(gameID);
+    gameTimers.delete(gameID);
+
     console.log(`Game: ${gameID} has been deleted`);
     return true;
 }
@@ -81,7 +105,7 @@ export function leaveGame(gameID, playerID) {
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
     players.delete(playerID);
-    playerSockets.delete(playerID); 
+    playerSockets.delete(playerID);
     console.log(`Player: ${playerID} has left the game`);
     if (playersArray.length == 0) {
         deleteGame(gameID);
@@ -95,7 +119,7 @@ export function leaveGame(gameID, playerID) {
 //FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
 
 function updateLocation(gameID, playerID, location) {
-    
+
     try {
         if (checkGameExists(gameID) == false) {
             console.log("ERROR: GAME DOES NOT EXIST");
@@ -116,25 +140,22 @@ function updateLocation(gameID, playerID, location) {
     });
 
     //Suggested Fix, make location based off of players map instead of in game object
-    players.set(playerID, {gameID: gameID, location: location});
+    players.set(playerID, { gameID: gameID, location: location });
     //Suggested Fix End
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
+    //console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
     return true;
 }
 //-----------------------------------------------------------------------------------------------------------------------
 
 //FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
-function getLocations(gameID, socket) {
+function getLocations(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-
-
-
 
     let playersArray = games.get(gameID).players;
     let locations = playersArray.map(player => ({
@@ -142,7 +163,17 @@ function getLocations(gameID, socket) {
         location: player.location
     }));
 
-    socket.send(JSON.stringify({ type: "LOCATIONS_UPDATE", locations: locations, timestamp: Date.now()}));
+    for(let player of playersArray){
+        let playerSocket = playerSockets.get(player.playerID);
+        if(playerSocket){
+            playerSocket.send(JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
+            //console.log("Location Payload" + JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
+        } else {
+            console.log("ERROR: Player socket not found for playerID " + player.playerID);
+        }
+    }
+
+    //socket.send(JSON.stringify({ type: "LOCATIONS_UPDATE", locations: locations, timestamp: Date.now() }));
 
     return locations;
 }
@@ -152,54 +183,66 @@ function startSeekPhase(gameID) {
     if (!checkGameExists(gameID)) return false;
 
     const game = games.get(gameID);
-    if (game.timer) {
-        clearTimeout(game.timer);
+    const gameTimer = gameTimers.get(gameID) ?? {};
+
+    if (gameTimer.seekTimer) {
+        clearTimeout(gameTimer.seekTimer);
     }
+
+    if(gameTimer.intervalTime) {
+        clearInterval(gameTimer.intervalTime);
+    }
+
+
 
     game.phase = "SEEK";
     console.log(`Game ${gameID} entering SEEK phase`);
 
-    game.timer = setTimeout(() => {
+    gameTimer.intervalTime = setInterval(() => {
+        // action every 2 seconds
+        getLocations(gameID);
+        console.log('sent');
+    }, sendTime);
 
-        game.seekTime = setInterval(() => {
-            getLocations(gameID);
-        }, 2000); //Every 10 seconds during seek phase     
 
+    gameTimer.seekTimer = setTimeout(() => {
+        clearInterval(gameTimer.intervalTime);
         if (checkGameExists(gameID)) {
             startHidePhase(gameID);
         }
     }, seekTime);
 
-    games.set(gameID, game);
+    gameTimers.set(gameID, gameTimer);
     return true;
 }
 
 
+
 function startHidePhase(gameID) {
     if (!checkGameExists(gameID)) return false;
-
     const game = games.get(gameID);
+    const gameTimer = gameTimers.get(gameID) ?? {};
 
-    if (game.timer) {
-        clearTimeout(game.timer);
+    if (gameTimer.hideTimer) {
+        clearTimeout(gameTimer.hideTimer);
     }
 
     game.phase = "HIDE";
     console.log(`Game ${gameID} entering HIDE phase`);
 
-    game.timer = setTimeout(() => {
+    gameTimer.hideTimer = setTimeout(() => {
         if (checkGameExists(gameID)) {
             startSeekPhase(gameID);
         }
     }, hideTime);
-
-    games.set(gameID, game);
+    gameTimers.set(gameID, gameTimer);
     return true;
 }
 
 
+
 function gameStart(gameID) {
-    console.log("Starting Game..." + gameID);    
+    console.log("Starting Game..." + gameID);
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
@@ -210,7 +253,7 @@ function gameStart(gameID) {
     games.set(gameID, game);
     console.log(`Game: ${gameID} has started`);
     signalPlayersGameStart(gameID);
-    //startHidePhase(gameID);
+    startHidePhase(gameID);
     return true;
 
 }
@@ -237,14 +280,14 @@ function signalPlayersGameEnd(gameID) {
     // socket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
 }
 
-function joinGame(gameID, newplayerID) {
+function joinGame(gameID, newplayerID, socket) {
     //ERROR HERE
 
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-    
+
     let playersArray = games.get(gameID).players;
     //Saftey Check, Might remove, On Possiblity of Lifetime Player ID linked to account. 
     playersArray.forEach(player => {
@@ -258,16 +301,17 @@ function joinGame(gameID, newplayerID) {
         status: "running",
         isAdmin: false,
         location: {
-            lat: null,
-            lng: null,
-            alt: null
+            lat: 0,
+            lon: 0,
+            alt: 0
         }
     }
 
     playersArray.push(player);
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, {gameID: gameID, location: { lat: null, lng: null, alt: null }});
+    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 } });
+    playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
 }
@@ -284,7 +328,7 @@ export function gameManager(data, socket) {
             return { gameID: game.gameID };
         case "JOIN_GAME":
             //figure authentication
-            let status = joinGame(data.gameID, data.playerID);
+            let status = joinGame(data.gameID, data.playerID, socket);
             if (status == false) {
                 return { error: "game does not exist" };
             }
@@ -293,7 +337,7 @@ export function gameManager(data, socket) {
         case "START_GAME":
             let gameID = lookForGameWithPlayer(data.playerID);
             console.log("starting game");
-            
+
             gameStart(gameID, socket);
             break;
         case "LOCATION_UPDATE":
@@ -314,12 +358,17 @@ export function gameManager(data, socket) {
             break;
         case "END_GAME":
             //Not Implemented Yet
-            console.log(`Game: ${data.gameID} has ended`);
-            signalPlayersGameEnd(data.gameID);
-            deleteGame(data.gameID);
+            //console.log(`Game: ${data.gameID} has ended`);
+            let gameID2 = lookForGameWithPlayer(data.playerID);
+            if(gameID2){
+                signalPlayersGameEnd(gameID2);
+                deleteGame(gameID2);
+            } else {
+                return { error: `Invalid event type: ${data.type}` };
+            }
             break;
         default:
-            console.log("Invalid event type received: " + data.type);  
+            console.log("Invalid event type received: " + data.type);
             return { error: `Invalid event type: ${data.type}` };
     }
 }

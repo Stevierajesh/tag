@@ -135,8 +135,25 @@ function renderRawState() {
 /* ----------------------------- HELPERS ---------------------------------- */
 
 function setText(id, value) {
-  document.getElementById(id).textContent = value;
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.textContent = value;
+
+  // Remove old phase classes
+  el.classList.remove(
+    'phase-LOBBY',
+    'phase-HIDE',
+    'phase-SEEK',
+    'phase-END'
+  );
+
+  // Apply new phase class
+  if (value) {
+    el.classList.add('phase', `phase-${value}`);
+  }
 }
+
 
 function addCell(row, text) {
   const td = document.createElement('td');
