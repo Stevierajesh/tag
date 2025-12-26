@@ -13,6 +13,17 @@ async function fetchState() {
     if (!res.ok) throw new Error('Bad response');
 
     state = await res.json();
+
+    // FIX 1: auto-select a game
+    if (!selectedGameID) {
+      const firstGame = Object.keys(state.games || {})[0];
+      selectedGameID = firstGame ?? null;
+    }
+
+    // FIX 2: ensure maps always exist
+    state.players = state.players || {};
+    state.playerSockets = state.playerSockets || {};
+
     setServerOnline();
     render();
   } catch (err) {
@@ -20,6 +31,7 @@ async function fetchState() {
     console.error('Dashboard fetch failed', err);
   }
 }
+
 
 
 function setServerOnline() {
@@ -104,15 +116,18 @@ function renderPlayersTable(game) {
   game.players.forEach(player => {
     const tr = document.createElement('tr');
 
+    const livePlayer = state.players?.[player.playerID];
+
     addCell(tr, player.playerID);
     addCell(tr, player.status);
     addCell(tr, player.isAdmin ? 'YES' : 'NO');
 
-    addCell(tr, player.location?.lat ?? '—');
-    addCell(tr, player.location?.lon ?? '—');
-    addCell(tr, player.location?.alt ?? '—');
+    addCell(tr, livePlayer?.location?.lat ?? '—');
+    addCell(tr, livePlayer?.location?.lon ?? '—');
+    addCell(tr, livePlayer?.location?.alt ?? '—');
 
-    const socketState = state.playerSockets?.[player.playerID] || 'UNKNOWN';
+    const socketState =
+      state.playerSockets?.[player.playerID] || 'UNKNOWN';
     addCell(tr, socketState);
 
     tbody.appendChild(tr);
