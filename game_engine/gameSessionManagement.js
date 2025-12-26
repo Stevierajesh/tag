@@ -42,11 +42,7 @@ function gameCreate(playerID, circleRadius, center, socket) {
         phase: "LOBBY",
         players: [
             {
-                playerID: playerID, status: "infected", isAdmin: true, location: {
-                    lat: 0,
-                    lon: 0,
-                    alt: 0
-                }
+                playerID: playerID, status: "infected", isAdmin: true
             }
         ],
         circleCenter: center,
@@ -130,21 +126,18 @@ function updateLocation(gameID, playerID, location) {
         return false;
     }
 
-    let playersArray = games.get(gameID).players;
-
-    //This is very inefficient, will fix later
-    playersArray.forEach(player => {
-        if (player.playerID == playerID) {
-            player.location = location;
-        }
-    });
+    //Suggested Fix
+    let player = players.get(playerID);
+    player.location = location;
+    //Suggested Fix End
+    
 
     //Suggested Fix, make location based off of players map instead of in game object
     players.set(playerID, { gameID: gameID, location: location });
     //Suggested Fix End
 
 
-    games.set(gameID, { ...games.get(gameID), players: playersArray });
+    //games.set(gameID, { ...games.get(gameID), players: playersArray });
     //console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
     return true;
 }
@@ -157,11 +150,14 @@ function getLocations(gameID) {
         return false;
     }
 
+
+    //Suggested Fix
     let playersArray = games.get(gameID).players;
     let locations = playersArray.map(player => ({
         playerID: player.playerID,
-        location: player.location
+        location: players.get(player.playerID).location
     }));
+    //Suggested Fix END
 
     for(let player of playersArray){
         let playerSocket = playerSockets.get(player.playerID);
@@ -201,7 +197,7 @@ function startSeekPhase(gameID) {
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
         getLocations(gameID);
-        console.log('sent');
+        //console.log('sent');
     }, sendTime);
 
 
@@ -296,18 +292,16 @@ function joinGame(gameID, newplayerID, socket) {
         }
     });
 
+    //Suggested Fix
     let player = {
         playerID: newplayerID,
         status: "running",
         isAdmin: false,
-        location: {
-            lat: 0,
-            lon: 0,
-            alt: 0
-        }
     }
+    //Suggested Fix END
 
     playersArray.push(player);
+
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
     players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 } });
