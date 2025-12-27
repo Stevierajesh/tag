@@ -121,10 +121,10 @@ function renderPlayersTable(game) {
     addCell(tr, player.playerID);
     addCell(tr, player.status);
     addCell(tr, player.isAdmin ? 'YES' : 'NO');
-
-    addCell(tr, livePlayer?.location?.lat ?? '—');
-    addCell(tr, livePlayer?.location?.lon ?? '—');
-    addCell(tr, livePlayer?.location?.alt ?? '—');
+    
+    addCell(tr, livePlayer?.location?.x ?? '—');
+    addCell(tr, livePlayer?.location?.y ?? '—');
+    addCell(tr, livePlayer?.location?.z ?? '—');
 
     const socketState =
       state.playerSockets?.[player.playerID] || 'UNKNOWN';

@@ -2,6 +2,7 @@
 
 
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
+import fs from 'fs';
 export var games = new Map();
 
 var gameTimers = new Map();
@@ -58,7 +59,7 @@ function gameCreate(playerID, circleRadius, center, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 } });
+    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 } });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -128,9 +129,11 @@ function updateLocation(gameID, playerID, location) {
 
     //Suggested Fix
     let player = players.get(playerID);
+
+
     player.location = location;
     //Suggested Fix End
-    
+
 
     //Suggested Fix, make location based off of players map instead of in game object
     players.set(playerID, { gameID: gameID, location: location });
@@ -156,22 +159,29 @@ function getLocations(gameID) {
     let locations = playersArray.map(player => ({
         playerID: player.playerID,
         location: players.get(player.playerID).location,
-        //z: players.get(player.playerID).location.lon
     }));
     //Suggested Fix END
 
-    for(let player of playersArray){
+    for (let player of playersArray) {
         let playerSocket = playerSockets.get(player.playerID);
-        if(playerSocket){
+        if (playerSocket) {
             playerSocket.send(JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
-            console.log(locations[0].location.lon);   
-            //console.log("Location Payload" + JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
         } else {
             console.log("ERROR: Player socket not found for playerID " + player.playerID);
         }
     }
 
     //socket.send(JSON.stringify({ type: "LOCATIONS_UPDATE", locations: locations, timestamp: Date.now() }));
+    //console.log(locations);
+    // fs.appendFile(
+    //     'log.txt',
+    //     JSON.stringify(locations, null, 2) + '\n',
+    //     (err) => {
+    //         if (err) {
+    //             console.error("Error appending to log.txt:", err);
+    //         }
+    //     }
+    // );
 
     return locations;
 }
@@ -187,14 +197,14 @@ function startSeekPhase(gameID) {
         clearTimeout(gameTimer.seekTimer);
     }
 
-    if(gameTimer.intervalTime) {
+    if (gameTimer.intervalTime) {
         clearInterval(gameTimer.intervalTime);
     }
 
 
 
     game.phase = "SEEK";
-    console.log(`Game ${gameID} entering SEEK phase`);
+    //console.log(`Game ${gameID} entering SEEK phase`);
 
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
@@ -226,7 +236,7 @@ function startHidePhase(gameID) {
     }
 
     game.phase = "HIDE";
-    console.log(`Game ${gameID} entering HIDE phase`);
+    //console.log(`Game ${gameID} entering HIDE phase`);
 
     gameTimer.hideTimer = setTimeout(() => {
         if (checkGameExists(gameID)) {
@@ -306,7 +316,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 } });
+    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 } });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -356,7 +366,7 @@ export function gameManager(data, socket) {
             //Not Implemented Yet
             //console.log(`Game: ${data.gameID} has ended`);
             let gameID2 = lookForGameWithPlayer(data.playerID);
-            if(gameID2){
+            if (gameID2) {
                 signalPlayersGameEnd(gameID2);
                 deleteGame(gameID2);
             } else {
@@ -365,7 +375,7 @@ export function gameManager(data, socket) {
             break;
         case "SHOW_PLAYERS":
             let gameID3 = lookForGameWithPlayer(data.playerID);
-            if(gameID3){
+            if (gameID3) {
                 return getLocations(gameID3);
             } else {
                 return { error: `Invalid event type: ${data.type}` };
