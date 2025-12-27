@@ -10,7 +10,8 @@ const EVENTTYPES = [
     "TAG_ATTEMPT",
     "START_GAME",
     "GET_LOCATIONS",
-    "END_GAME"
+    "END_GAME",
+    "SHOW_PLAYERS"
 ];
 
 const app = express();
@@ -24,7 +25,8 @@ import {
     lookForGameWithPlayer,
     games,
     players,
-    playerSockets
+    playerSockets,
+    deleteGame
 } from './game_engine/gameSessionManagement.js';
 
 /* ---------------- DEBUG ROUTE ---------------- */
@@ -51,6 +53,16 @@ app.get('/__debug/state', (req, res) => {
     });
 });
 
+app.post('deleteGame', (req, res) => {
+    const { gameID } = req.body;
+    if (games.has(gameID)) {
+        deleteGame(gameID);
+        return res.status(200).json({ message: 'Game deleted' });
+    } else {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+});
+
 
 
 /* ---------------- WEBSOCKETS ---------------- */
@@ -61,7 +73,7 @@ wss.on('connection', socket => {
     socket.on('message', message => {
         let data;
 
-        console.log("Received message:", message.toString());
+        //console.log("Received message:", message.toString());
 
         try {
             data = JSON.parse(message.toString());
