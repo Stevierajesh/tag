@@ -8,6 +8,30 @@
   --danger: #f85149;
 }
 
+.game-details {
+  position: relative;
+}
+
+.delete-game-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  margin: 0; /* remove margin-top */
+  padding: 8px 12px;
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-game-btn:hover {
+  background-color: darkred;
+}
+
+
 * {
   box-sizing: border-box;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

@@ -66,7 +66,7 @@ function gameCreate(playerID, circleRadius, center, socket) {
 }
 //FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
 
-function deleteGame(gameID) {
+export function deleteGame(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
@@ -155,7 +155,8 @@ function getLocations(gameID) {
     let playersArray = games.get(gameID).players;
     let locations = playersArray.map(player => ({
         playerID: player.playerID,
-        location: players.get(player.playerID).location
+        location: players.get(player.playerID).location,
+        //z: players.get(player.playerID).location.lon
     }));
     //Suggested Fix END
 
@@ -163,6 +164,7 @@ function getLocations(gameID) {
         let playerSocket = playerSockets.get(player.playerID);
         if(playerSocket){
             playerSocket.send(JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
+            console.log(locations[0].location.lon);   
             //console.log("Location Payload" + JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
         } else {
             console.log("ERROR: Player socket not found for playerID " + player.playerID);
@@ -357,6 +359,14 @@ export function gameManager(data, socket) {
             if(gameID2){
                 signalPlayersGameEnd(gameID2);
                 deleteGame(gameID2);
+            } else {
+                return { error: `Invalid event type: ${data.type}` };
+            }
+            break;
+        case "SHOW_PLAYERS":
+            let gameID3 = lookForGameWithPlayer(data.playerID);
+            if(gameID3){
+                return getLocations(gameID3);
             } else {
                 return { error: `Invalid event type: ${data.type}` };
             }
