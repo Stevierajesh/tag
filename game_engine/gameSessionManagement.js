@@ -30,7 +30,16 @@ export function lookForGameWithPlayer(identification) {
 }
 
 function gameCreate(playerID, circleRadius, center, socket) {
-    const gameID = Math.random().toString(36).substring(2, 6);
+    if(lookForGameWithPlayer(playerID)){
+        console.log("ERROR: PLAYER ALREADY IN A GAME");
+        return false;
+    }
+    let gameID = Math.random().toString(36).substring(2, 6);
+    if(checkGameExists(gameID)){
+        while(checkGameExists(gameID)){
+            gameID = Math.random().toString(36).substring(2, 6);
+        }
+    }
     console.log("Game started by player: " + playerID);
     //Initialize game state
     const game = {
@@ -143,7 +152,7 @@ function getLocations(gameID) {
     }
     //Could be done in one loop. Optimization for later.
     let playersArray = games.get(gameID).players;
-    let locations = playersArray.map(player => ({
+    let locations = playersArray.filter(p => players.has(p.playerID)).map(player => ({
         playerID: player.playerID,
         location: players.get(player.playerID).location,
     }));
@@ -274,7 +283,7 @@ function signalPlayersGameStart(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket.readyState == WebSocket.OPEN) {
+        if (playerSocket && playerSocket.readyState == WebSocket.OPEN) {
             try {
                 playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
             } catch (err) {
@@ -300,9 +309,9 @@ function signalPlayersGameEnd(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket.readyState == WebSocket.OPEN) {
+        if (playerSocket && playerSocket.readyState == WebSocket.OPEN) {
             try {
-                playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
+                playerSocket.send(JSON.stringify({ type: "GAME_ENDED", gameID: gameID }));
             } catch (err) {
                 console.error("Failed To Send GAME_ENDED", err);
             }
@@ -367,6 +376,9 @@ export function gameManager(data, socket) {
     switch (data.type) {
         case "CREATE_GAME":
             game = gameCreate(data.playerID, data.circleRadius, data.circleCenter, socket);
+            if(game == false){
+                return { error: "player already in a game" };
+            }
             games.set(game.gameID, game);
             console.log(`Game created with ID: ${game.gameID}`);
             return { gameID: game.gameID };
