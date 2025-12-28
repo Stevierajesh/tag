@@ -1,0 +1,289 @@
+:root {
+  --bg: #0e1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --danger: #f85149;
+}
+
+.game-details {
+  position: relative;
+}
+
+.delete-game-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  margin: 0; /* remove margin-top */
+  padding: 8px 12px;
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-game-btn:hover {
+  background-color: darkred;
+}
+
+
+* {
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+header h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #2ea043;
+  border-radius: 50%;
+}
+
+.status-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Layout */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 420px;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Panels */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.panel h3 {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Games list */
+.games-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.game-item {
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.game-item:hover {
+  background: #1f2933;
+}
+
+.game-item.active {
+  border-color: var(--accent);
+  background: #1f2933;
+}
+
+.game-id {
+  font-size: 12px;
+}
+
+.game-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Details */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  font-size: 11px;
+}
+
+.details-grid label {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+th, td {
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Raw JSON */
+.raw-panel pre {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #9cdcfe;
+  background: #0b0e14;
+  padding: 10px;
+  border-radius: 4px;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Footer */
+footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.phase {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.phase-LOBBY { background: #2f81f7; color: white; }
+.phase-HIDE  { background: #f85149; color: white; }
+.phase-SEEK  { background: #3fb950; color: white; }
+.phase-END   { background: #8b949e; color: black; }
+
+
+/* =========================
+   Mobile / Small Screens
+   ========================= */
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  header {
+    padding: 10px 14px;
+  }
+
+  header h1 {
+    font-size: 14px;
+  }
+
+  .status-text {
+    font-size: 11px;
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .panel h2 {
+    font-size: 12px;
+  }
+
+  .panel h3 {
+    font-size: 11px;
+  }
+
+  /* Make lists easier to tap */
+  .game-item {
+    padding: 10px;
+  }
+
+  /* Tables scroll horizontally on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  th, td {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  /* Raw JSON should not blow up the screen */
+  .raw-panel pre {
+    font-size: 9px;
+    max-height: 240px;
+  }
+
+  footer {
+    font-size: 9px;
+    padding: 6px 10px;
+  }
+}
+
+/* =========================
+   Very Small Phones
+   ========================= */
+@media (max-width: 480px) {
+  header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-id {
+    font-size: 11px;
+  }
+
+  .game-meta {
+    font-size: 10px;
+  }
+}
