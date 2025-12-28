@@ -1,3 +1,11 @@
+process.on("uncaughtException", err => {
+  console.error("Uncaught exception:", err);
+});
+
+process.on("unhandledRejection", err => {
+  console.error("Unhandled promise rejection:", err);
+});
+
 import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
