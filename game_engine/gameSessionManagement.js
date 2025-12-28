@@ -2,7 +2,7 @@
 
 
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
-import fs from 'fs';
+//import fs from 'fs';
 export var games = new Map();
 
 var gameTimers = new Map();
@@ -11,7 +11,6 @@ var hideTime = 0; //10 seconds
 var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
 
-//MUST OPTIMIZE LATER - FOR UPDATING LOCATIONS IN O(1) TIME.
 export var players = new Map();
 export var playerSockets = new Map();
 
@@ -29,17 +28,14 @@ export function lookForGameWithPlayer(identification) {
 
     return null;
 }
-//FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
+
 function gameCreate(playerID, circleRadius, center, socket) {
     const gameID = Math.random().toString(36).substring(2, 6);
     console.log("Game started by player: " + playerID);
     //Initialize game state
-
-
-
-
     const game = {
         gameID: gameID,
+        Admin: playerID,
         phase: "LOBBY",
         players: [
             {
@@ -65,8 +61,6 @@ function gameCreate(playerID, circleRadius, center, socket) {
     games.set(game.gameID, game);
     return game;
 }
-//FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
-
 export function deleteGame(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
@@ -113,7 +107,6 @@ export function leaveGame(gameID, playerID) {
 }
 
 
-//FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
 
 function updateLocation(gameID, playerID, location) {
 
@@ -126,27 +119,18 @@ function updateLocation(gameID, playerID, location) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-
-    //Suggested Fix
     let player = players.get(playerID);
 
 
     player.location = location;
-    //Suggested Fix End
 
-
-    //Suggested Fix, make location based off of players map instead of in game object
     players.set(playerID, { gameID: gameID, location: location });
-    //Suggested Fix End
 
 
-    //games.set(gameID, { ...games.get(gameID), players: playersArray });
-    //console.log(`Player: ${playerID} location updated to ${JSON.stringify(location)}`);
     return true;
 }
-//-----------------------------------------------------------------------------------------------------------------------
 
-//FIX WITH THE OPTIMIZATION LATER---------------------------------------------------------------------------------------
+
 function getLocations(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
@@ -154,14 +138,12 @@ function getLocations(gameID) {
     }
 
 
-    //Suggested Fix
+    //Could be done in one loop. Optimization for later.
     let playersArray = games.get(gameID).players;
     let locations = playersArray.map(player => ({
         playerID: player.playerID,
         location: players.get(player.playerID).location,
     }));
-    //Suggested Fix END
-
     for (let player of playersArray) {
         let playerSocket = playerSockets.get(player.playerID);
         if (playerSocket) {
@@ -171,8 +153,7 @@ function getLocations(gameID) {
         }
     }
 
-    //socket.send(JSON.stringify({ type: "LOCATIONS_UPDATE", locations: locations, timestamp: Date.now() }));
-    //console.log(locations);
+    //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
     // fs.appendFile(
     //     'log.txt',
     //     JSON.stringify(locations, null, 2) + '\n',
@@ -185,7 +166,6 @@ function getLocations(gameID) {
 
     return locations;
 }
-//-----------------------------------------------------------------------------------------------------------------------
 
 function startSeekPhase(gameID) {
     if (!checkGameExists(gameID)) return false;
@@ -204,7 +184,6 @@ function startSeekPhase(gameID) {
 
 
     game.phase = "SEEK";
-    //console.log(`Game ${gameID} entering SEEK phase`);
 
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
@@ -236,7 +215,6 @@ function startHidePhase(gameID) {
     }
 
     game.phase = "HIDE";
-    //console.log(`Game ${gameID} entering HIDE phase`);
 
     gameTimer.hideTimer = setTimeout(() => {
         if (checkGameExists(gameID)) {
@@ -267,32 +245,31 @@ function gameStart(gameID) {
 }
 
 function signalPlayersGameStart(gameID) {
-    //Not Implemented Yet
+
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
         playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
     });
-    //
-    // socket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
 }
 
 function signalPlayersGameEnd(gameID) {
-    //Not Implemented Yet
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
         playerSocket.send(JSON.stringify({ type: "GAME_ENDED", gameID: gameID }));
     });
-    //
-    // socket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
 }
 
 function joinGame(gameID, newplayerID, socket) {
-    //ERROR HERE
 
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
+        return false;
+    }
+
+    if (lookForGameWithPlayer(newplayerID)) {
+        console.log("ERROR: PLAYER ALREADY IN A GAME");
         return false;
     }
 
@@ -304,13 +281,13 @@ function joinGame(gameID, newplayerID, socket) {
         }
     });
 
-    //Suggested Fix
+    
     let player = {
         playerID: newplayerID,
         status: "running",
         isAdmin: false,
     }
-    //Suggested Fix END
+
 
     playersArray.push(player);
 
