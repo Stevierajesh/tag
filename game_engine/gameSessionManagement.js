@@ -74,12 +74,14 @@ export function deleteGame(gameID) {
 
 
     if (gameTimers.has(gameID)) {
-        clearTimeout(gameTimers.get(gameID));
+        let timer = gameTimers.get(gameID);
+        clearTimeout(timer.seekTimer);
+        clearTimeout(timer.hideTimer);
+        clearInterval(timer.intervalTime);
         gameTimers.delete(gameID);
     }
 
     games.delete(gameID);
-    gameTimers.delete(gameID);
 
     console.log(`Game: ${gameID} has been deleted`);
     return true;
@@ -119,8 +121,11 @@ function updateLocation(gameID, playerID, location) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-    let player = players.get(playerID);
 
+    if(!players.has(playerID)){
+        return false;
+    }
+    let player = players.get(playerID);
 
     player.location = location;
 
