@@ -136,8 +136,6 @@ function getLocations(gameID) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-
-
     //Could be done in one loop. Optimization for later.
     let playersArray = games.get(gameID).players;
     let locations = playersArray.map(player => ({
@@ -146,11 +144,33 @@ function getLocations(gameID) {
     }));
     for (let player of playersArray) {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket) {
-            playerSocket.send(JSON.stringify({ type: "PLAYERS_UPDATE", locations: locations, timestamp: Date.now() }));
+        if (playerSocket && playerSocket.readyState === WebSocket.OPEN) {
+            try {
+                playerSocket.send(JSON.stringify({
+                    type: "PLAYERS_UPDATE",
+                    locations,
+                    timestamp: Date.now()
+                }));
+            } catch (err) {
+                console.error("Failed to send PLAYERS_UPDATE", err);
+                playerSockets.delete(player.playerID);
+                players.delete(player.playerID);
+                leaveGame(lookForGameWithPlayer(player.playerID), player.playerID);
+            }
+        } else if (!playerSocket) {
+            if(player.playerID){
+                console.error("Player socket missing:", player.playerID);
+            } else{
+                console.log("Player ID is missing");
+            }
         } else {
-            console.log("ERROR: Player socket not found for playerID " + player.playerID);
+            if(player.playerID){
+                console.error("Player socket not open:", player.playerID, playerSocket.readyState);
+            } else {
+                console.log("Player ID is missing");
+            }
         }
+
     }
 
     //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
@@ -249,7 +269,25 @@ function signalPlayersGameStart(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
+        if (playerSocket.readyState == WebSocket.OPEN) {
+            try {
+                playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
+            } catch (err) {
+                console.error("Failed To Send GAME_STARTED", err);
+            }
+        } else if (!playerSocket) {
+            if(player.playerID){
+                console.error("Player socket missing:", player.playerID);
+            } else{
+                console.log("Player ID is missing");
+            }
+        } else {
+            if(player.playerID){
+                console.error("Player socket not open:", player.playerID, playerSocket.readyState);
+            } else {
+                console.log("Player ID is missing");
+            }
+        }
     });
 }
 
@@ -257,7 +295,25 @@ function signalPlayersGameEnd(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        playerSocket.send(JSON.stringify({ type: "GAME_ENDED", gameID: gameID }));
+        if (playerSocket.readyState == WebSocket.OPEN) {
+            try {
+                playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
+            } catch (err) {
+                console.error("Failed To Send GAME_ENDED", err);
+            }
+        } else if (!playerSocket) {
+            if(player.playerID){
+                console.error("Player socket missing:", player.playerID);
+            } else{
+                console.log("Player ID is missing");
+            }
+        } else {
+            if(player.playerID){
+                console.error("Player socket not open:", player.playerID, playerSocket.readyState);
+            } else {
+                console.log("Player ID is missing");
+            }
+        }
     });
 }
 
@@ -281,7 +337,7 @@ function joinGame(gameID, newplayerID, socket) {
         }
     });
 
-    
+
     let player = {
         playerID: newplayerID,
         status: "running",
