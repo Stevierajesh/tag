@@ -172,9 +172,9 @@ Sent frequently by clients to update their current position.
     "type": "LOCATION_UPDATE",
     "playerID": "p43",
     "location": {
-        "lat": 40.21049935750206,
-        "lng": -83.02927517362363,
-        "alt": 276.4463550494984
+        "y": 40.21049935750206,
+        "x": -83.02927517362363,
+        "z": 276.4463550494984
     },
     "timestamp": 1739999999
 }
@@ -187,7 +187,7 @@ Sent to clients to synchronize full game state.
 ```json
 {
     "type": "GAME_STATE",
-    "gameId": "abc123",
+    "gameID": "abc123",
     "phase": "HIDE",
     "circleRadius": 320,
     "you": {
@@ -248,9 +248,9 @@ Broadcast to clients with current player locations during reveal phases.
     "locations": [
         {
             "playerID": "p42",
-            "lat": 40.21049935750206,
-            "lng": -83.02927517362363,
-            "alt": 276.4463550494984
+            "y": 40.21049935750206,
+            "x": -83.02927517362363,
+            "z": 276.4463550494984
         }
     ],
     "timestamp": 1739999999
