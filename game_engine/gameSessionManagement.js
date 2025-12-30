@@ -1,6 +1,3 @@
-
-
-
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
 //import fs from 'fs';
 export var games = new Map();
@@ -29,7 +26,7 @@ export function lookForGameWithPlayer(identification) {
     return null;
 }
 
-function gameCreate(playerID, circleRadius, center, socket) {
+function gameCreate(playerID, circleRadius, center, origin, socket) {
     if(lookForGameWithPlayer(playerID)){
         console.log("ERROR: PLAYER ALREADY IN A GAME");
         return false;
@@ -51,6 +48,7 @@ function gameCreate(playerID, circleRadius, center, socket) {
                 playerID: playerID, status: "infected", isAdmin: true
             }
         ],
+        origin: origin,
         circleCenter: center,
         circleRadius: circleRadius,
         timer: null,
@@ -137,6 +135,10 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
+    console.log("Updates Player Location")
+    console.log("X: ", player.location.x)
+    console.log("Y: ", player.location.y)
+    console.log("Z: ", player.location.z)
 
     players.set(playerID, { gameID: gameID, location: location });
 
@@ -144,6 +146,57 @@ function updateLocation(gameID, playerID, location) {
     return true;
 }
 
+function geoToECEF(location) {
+    const a = 6378137.0;
+    const e2 = 6.69437999014e-3;
+
+    const latRad = location.lat * Math.PI / 180;
+    const lonRad = location.lon * Math.PI / 180;
+    const alt = location.alt ?? 0;
+    
+    const sinLat = Math.sin(latRad);
+    const cosLat = Math.cos(latRad);
+    const sinLon = Math.sin(lonRad);
+    const cosLon = Math.cos(lonRad);
+
+    const N = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+
+    const x = (N + alt) * cosLat * cosLon;
+    const y = (N + alt) * cosLat * sinLon;
+    const z = (N * (1 - e2) + alt) * sinLat;
+
+    return {x, y, z};
+}
+
+function ecefToENU(pointECRF, originECEF, originLat, originLon) {
+    const lat0 = originLat * Math.PI / 180;
+    const lon0 = originLon * Math.PI / 180;
+    
+    const dx = pointECRF.x - originECEF.x;
+    const dy = pointECRF.y - originECEF.y;
+    const dz = pointECRF.z - originECEF.z;
+
+    const sinLat = Math.sin(lat0);
+    const cosLat = Math.cos(lat0);
+    const sinLon = Math.sin(lon0);
+    const cosLon = Math.cos(lon0);
+
+    const east = -sinLon * dx + cosLon * dy;
+    const north = -sinLat * cosLon * dx - sinLat * sinLon * dy + cosLat * dz;
+    const up = cosLat * cosLon * dx + cosLat * sinLon * dy + sinLat * dz;
+
+    return {east, north, up};
+}
+
+function geoToLocal(playerLocation, origin) {
+    const originECEF = geoToECEF(origin);
+
+    const pointECRF = geoToECEF(playerLocation);
+
+    const {east, north, up} = ecefToENU(pointECRF, originECEF, origin.lat, origin.lon);
+
+    return {"x": east, "y": up, "z": north}
+}
 
 function getLocations(gameID) {
     if (checkGameExists(gameID) == false) {
@@ -237,8 +290,6 @@ function startSeekPhase(gameID) {
     return true;
 }
 
-
-
 function startHidePhase(gameID) {
     if (!checkGameExists(gameID)) return false;
     const game = games.get(gameID);
@@ -258,8 +309,6 @@ function startHidePhase(gameID) {
     gameTimers.set(gameID, gameTimer);
     return true;
 }
-
-
 
 function gameStart(gameID) {
     console.log("Starting Game..." + gameID);
@@ -375,13 +424,14 @@ export function gameManager(data, socket) {
 
     switch (data.type) {
         case "CREATE_GAME":
-            game = gameCreate(data.playerID, data.circleRadius, data.circleCenter, socket);
+            console.log("Origin: ", data.origin)
+            game = gameCreate(data.playerID, data.circleRadius, data.circleCenter, data.origin, socket);
             if(game == false){
                 return { error: "player already in a game" };
             }
             games.set(game.gameID, game);
             console.log(`Game created with ID: ${game.gameID}`);
-            return { gameID: game.gameID };
+            return { type: "GAMEID", gameID: game.gameID };
         case "JOIN_GAME":
             //figure authentication
             let status = joinGame(data.gameID, data.playerID, socket);
@@ -397,7 +447,10 @@ export function gameManager(data, socket) {
             gameStart(gameID, socket);
             break;
         case "LOCATION_UPDATE":
-            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
+            console.log("Player Location: ", data.location)
+            const location = geoToLocal(data.location, games.get(lookForGameWithPlayer(data.playerID)).origin)
+            console.log(location)
+            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, location);
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
