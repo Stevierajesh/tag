@@ -12,6 +12,7 @@ var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
 
 export var players = new Map();
+// playerID => { gameID, location: { x, y, z } }
 export var playerSockets = new Map();
 
 function checkGameExists(gameID) {
@@ -393,7 +394,6 @@ export function gameManager(data, socket) {
         case "START_GAME":
             let gameID = lookForGameWithPlayer(data.playerID);
             console.log("starting game");
-
             gameStart(gameID, socket);
             break;
         case "LOCATION_UPDATE":

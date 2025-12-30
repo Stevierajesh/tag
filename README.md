@@ -126,7 +126,7 @@ Creates a new game and assigns the creator as admin and infected.
 ```json
 {
     "type": "CREATE_GAME",
-    "playerID": "p42"
+    "playerID": "p42" //MAC ADDRESSES
 }
 ```
 
