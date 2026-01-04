@@ -32,6 +32,35 @@ async function fetchState() {
   }
 }
 
+/* --------------------------- DELETE GAME ------------------------------- */
+
+delete-game-btn.addEventListener('click', async () => {
+  if (!selectedGameID) return;
+  await deleteGame(selectedGameID);
+});
+
+async function deleteGame(gameID) {
+  try {
+    const res = await fetch(`${API_BASE}/deleteGame`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameID })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to delete game');
+    }
+
+    // Refresh state after deletion
+    await fetchState();
+  } catch (err) {
+    console.error('Delete game failed', err);
+  }
+}
+
+/* -------------------------- SERVER STATUS ------------------------------ */
+
 
 
 function setServerOnline() {
@@ -122,9 +151,9 @@ function renderPlayersTable(game) {
     addCell(tr, player.status);
     addCell(tr, player.isAdmin ? 'YES' : 'NO');
     
-    addCell(tr, livePlayer?.location?.x ?? '—');
-    addCell(tr, livePlayer?.location?.y ?? '—');
-    addCell(tr, livePlayer?.location?.z ?? '—');
+    addCell(tr, livePlayer?.location?.lon ?? '—');
+    addCell(tr, livePlayer?.location?.lat ?? '—');
+    addCell(tr, livePlayer?.location?.alt ?? '—');
 
     const socketState =
       state.playerSockets?.[player.playerID] || 'UNKNOWN';

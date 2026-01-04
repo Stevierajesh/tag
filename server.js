@@ -77,7 +77,7 @@ wss.on('connection', socket => {
     socket.on('message', message => {
         let data;
 
-        console.log("Received message:", message.toString());
+        //console.log("Received message:", message.toString());
 
         try {
             data = JSON.parse(message.toString());
