@@ -33,11 +33,13 @@ async function fetchState() {
 }
 
 /* --------------------------- DELETE GAME ------------------------------- */
+const deleteGameBtn = document.getElementById('delete-game-btn');
 
-delete-game-btn.addEventListener('click', async () => {
+deleteGameBtn.addEventListener('click', async () => {
   if (!selectedGameID) return;
   await deleteGame(selectedGameID);
 });
+
 
 async function deleteGame(gameID) {
   try {
