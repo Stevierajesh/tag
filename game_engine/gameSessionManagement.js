@@ -1,5 +1,5 @@
 // In-memory storage for games - TO BE CACHED INTO REDIS LATER
-//import fs from 'fs';
+import fs from 'fs';
 export var games = new Map();
 
 var gameTimers = new Map();
@@ -158,7 +158,16 @@ function arPosCalculation(playerID) {
             location: playerARPosition
         })
     }
-
+        //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
+    fs.appendFile(
+        'log.txt',
+        JSON.stringify(locations, null, 2) + '\n',
+        (err) => {
+            if (err) {
+                console.error("Error appending to log.txt:", err);
+            }
+        }
+    );
     let playerSocket = playerSockets.get(playerID);
     if (playerSocket && playerSocket.readyState === 1) {
         try {
@@ -282,16 +291,7 @@ function getLocations(gameID) {
 
     }
 
-    //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
-    // fs.appendFile(
-    //     'log.txt',
-    //     JSON.stringify(locations, null, 2) + '\n',
-    //     (err) => {
-    //         if (err) {
-    //             console.error("Error appending to log.txt:", err);
-    //         }
-    //     }
-    // );
+
 
     return locations;
 }
