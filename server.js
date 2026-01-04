@@ -43,14 +43,6 @@ app.set('trust proxy', true);
 
 
 app.get('/__debug/state', (req, res) => {
-  const ip = req.ip;
-
-  const allowed =
-    ip === '0.0.0.0'
-
-  if (!allowed) {
-    return res.sendStatus(403);
-  }
 
   res.json({
     games: Object.fromEntries(games),
