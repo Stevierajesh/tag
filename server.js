@@ -39,28 +39,36 @@ import {
 } from './game_engine/gameSessionManagement.js';
 
 /* ---------------- DEBUG ROUTE ---------------- */
+app.set('trust proxy', true);
+
 
 app.get('/__debug/state', (req, res) => {
+  const ip = req.ip;
 
-    if (req.socket.remoteAddress !== '127.0.0.1' &&
-        req.socket.remoteAddress !== '::1') {
-        return res.status(403).end();
-    }
+  const allowed =
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip.startsWith('::ffff:127.') ||   // IPv4-mapped localhost
+    ip.startsWith('10.') ||            // EC2 / VPC
+    ip.startsWith('192.168.') ||
+    ip.startsWith('172.16.');
 
-    // if (!socket) {
-    //     console.log("Missing socket for player:");
-    // }
-    res.json({
-        games: Object.fromEntries(games),
-        players: Object.fromEntries(players),
-        playerSockets: Object.fromEntries(
-            [...playerSockets].map(([id, socket]) => [
-                id,
-                socket.readyState === WebSocket.OPEN ? 'OPEN' : 'CLOSED'
-            ])
-        )
-    });
+  if (!allowed) {
+    return res.sendStatus(403);
+  }
+
+  res.json({
+    games: Object.fromEntries(games),
+    players: Object.fromEntries(players),
+    playerSockets: Object.fromEntries(
+      [...playerSockets].map(([id, socket]) => [
+        id,
+        socket.readyState === WebSocket.OPEN ? 'OPEN' : 'CLOSED'
+      ])
+    )
+  });
 });
+
 
 app.post('deleteGame', (req, res) => {
     const { gameID } = req.body;
