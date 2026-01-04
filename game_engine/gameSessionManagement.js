@@ -489,7 +489,7 @@ export function gameManager(data, socket) {
             gameStart(gameID, socket);
             break;
         case "LOCATION_UPDATE":
-            console.log("Player Location: ", data.location)
+            //console.log("Player Location: ", data.location)
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
             arPosCalculation(data.playerID)
             break;
