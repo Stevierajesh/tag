@@ -50,14 +50,14 @@ app.get('/__debug/state', (req, res) => {
     playerSockets: Object.fromEntries(
       [...playerSockets].map(([id, socket]) => [
         id,
-        socket.readyState === WebSocket.OPEN ? 'OPEN' : 'CLOSED'
+        socket.readyState === 1 ? 'OPEN' : 'CLOSED'
       ])
     )
   });
 });
 
 
-app.post('deleteGame', (req, res) => {
+app.post('/deleteGame', (req, res) => {
     const { gameID } = req.body;
     if (games.has(gameID)) {
         deleteGame(gameID);
