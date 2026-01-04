@@ -46,12 +46,7 @@ app.get('/__debug/state', (req, res) => {
   const ip = req.ip;
 
   const allowed =
-    ip === '127.0.0.1' ||
-    ip === '::1' ||
-    ip.startsWith('::ffff:127.') ||   // IPv4-mapped localhost
-    ip.startsWith('10.') ||            // EC2 / VPC
-    ip.startsWith('192.168.') ||
-    ip.startsWith('172.16.');
+    ip === '0.0.0.0'
 
   if (!allowed) {
     return res.sendStatus(403);
