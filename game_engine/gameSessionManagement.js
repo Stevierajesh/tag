@@ -160,7 +160,7 @@ function arPosCalculation(playerID) {
     }
 
     let playerSocket = playerSockets.get(playerID);
-    if (playerSocket && playerSocket.readyState === WebSocket.OPEN) {
+    if (playerSocket && playerSocket.readyState === 1) {
         try {
             playerSocket.send(JSON.stringify({
                 type: "AR_POSITIONS",
@@ -253,7 +253,7 @@ function getLocations(gameID) {
     }));
     for (let player of playersArray) {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket && playerSocket.readyState === WebSocket.OPEN) {
+        if (playerSocket && playerSocket.readyState === 1) {
             try {
                 playerSocket.send(JSON.stringify({
                     type: "PLAYERS_UPDATE",
@@ -374,7 +374,7 @@ function signalPlayersGameStart(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket && playerSocket.readyState == WebSocket.OPEN) {
+        if (playerSocket && playerSocket.readyState == 1) {
             try {
                 playerSocket.send(JSON.stringify({ type: "GAME_STARTED", gameID: gameID }));
             } catch (err) {
@@ -400,7 +400,7 @@ function signalPlayersGameEnd(gameID) {
     let game = games.get(gameID);
     game.players.forEach(player => {
         let playerSocket = playerSockets.get(player.playerID);
-        if (playerSocket && playerSocket.readyState == WebSocket.OPEN) {
+        if (playerSocket && playerSocket.readyState == 1) {
             try {
                 playerSocket.send(JSON.stringify({ type: "GAME_ENDED", gameID: gameID }));
             } catch (err) {
