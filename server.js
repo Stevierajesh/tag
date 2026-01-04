@@ -10,6 +10,7 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
+
 const EVENTTYPES = [
     "CREATE_GAME",
     "JOIN_GAME",
@@ -26,7 +27,7 @@ const EVENTTYPES = [
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
-
+app.use(express.json());
 
 import {
     gameManager,
@@ -58,13 +59,23 @@ app.get('/__debug/state', (req, res) => {
 
 
 app.post('/deleteGame', (req, res) => {
-    const { gameID } = req.body;
-    if (games.has(gameID)) {
-        deleteGame(gameID);
-        return res.status(200).json({ message: 'Game deleted' });
-    } else {
-        return res.status(404).json({ error: 'Game not found' });
+  try {
+    const { gameID } = req.body || {};
+
+    if (!gameID) {
+      return res.status(400).json({ error: 'Missing gameID' });
     }
+
+    if (!games.has(gameID)) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    deleteGame(gameID);//RECURSION ISSUE? 
+    return res.status(200).json({ message: 'Game deleted' });
+  } catch (err) {
+    console.error('DeleteGame failed:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
