@@ -224,7 +224,7 @@ function ecefToENU(pointECRF, originECEF, originLat, originLon) {
     const cosLon = Math.cos(lon0);
 
     const east = -sinLon * dx + cosLon * dy;
-    const north = -sinLat * cosLon * dx - sinLat * sinLon * dy + cosLat * dz;
+    const north = (-sinLat * cosLon * dx - sinLat * sinLon * dy + cosLat * dz) * -1;
     const up = cosLat * cosLon * dx + cosLat * sinLon * dy + sinLat * dz;
 
     return {east, north, up};
