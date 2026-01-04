@@ -19,7 +19,8 @@ const EVENTTYPES = [
     "START_GAME",
     "GET_LOCATIONS",
     "END_GAME",
-    "SHOW_PLAYERS"
+    "SHOW_PLAYERS",
+    "START_AR"
 ];
 
 const app = express();
@@ -81,7 +82,7 @@ wss.on('connection', socket => {
     socket.on('message', message => {
         let data;
 
-        //console.log("Received message:", message.toString());
+        console.log("Received message:", message.toString());
 
         try {
             data = JSON.parse(message.toString());

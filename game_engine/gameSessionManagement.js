@@ -7,6 +7,7 @@ var gameTimers = new Map();
 var hideTime = 0; //10 seconds
 var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
+var arTime = 30000; // 30 seconds
 
 export var players = new Map();
 export var playerSockets = new Map();
@@ -135,15 +136,56 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
-    console.log("Updates Player Location")
-    console.log("X: ", player.location.x)
-    console.log("Y: ", player.location.y)
-    console.log("Z: ", player.location.z)
-
     players.set(playerID, { gameID: gameID, location: location });
 
 
     return true;
+}
+
+function arPosCalculation(playerID) {
+    const game = lookForGameWithPlayer(playerID)
+    const playersArray = games.get(game).players;
+    const user = players.get(playerID)
+    const origin = user.location
+
+    let locations = [];
+
+    for (const p of playersArray) {
+        const selectedPlayer = players.get(p.playerID)
+        const playerARPosition = geoToLocal(selectedPlayer.location, origin)
+        locations.push({
+            playerID: p.playerID,
+            location: playerARPosition
+        })
+    }
+
+    let playerSocket = playerSockets.get(playerID);
+    if (playerSocket && playerSocket.readyState === WebSocket.OPEN) {
+        try {
+            playerSocket.send(JSON.stringify({
+                type: "AR_POSITIONS",
+                locations: locations,
+                timestamp: Date.now()
+            }));
+        } catch (err) {
+            console.error("Failed to send AR_POSITIONS", err);
+            playerSockets.delete(playerID);
+            players.delete(playerID);
+            leaveGame(lookForGameWithPlayer(playerID), playerID);
+        }
+    } else if (!playerSocket) {
+        if(playerID){
+            console.error("Player socket missing:", playerID);
+        } else{
+            console.log("Player ID is missing");
+        }
+    } else {
+        if(playerID){
+            console.error("Player socket not open:", playerID, playerSocket.readyState);
+        } else {
+            console.log("Player ID is missing");
+        }
+    }
 }
 
 function geoToECEF(location) {
@@ -274,7 +316,7 @@ function startSeekPhase(gameID) {
 
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
-        getLocations(gameID);
+        //getLocations(gameID);
         //console.log('sent');
     }, sendTime);
 
@@ -448,9 +490,8 @@ export function gameManager(data, socket) {
             break;
         case "LOCATION_UPDATE":
             console.log("Player Location: ", data.location)
-            const location = geoToLocal(data.location, games.get(lookForGameWithPlayer(data.playerID)).origin)
-            console.log(location)
-            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, location);
+            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
+            arPosCalculation(data.playerID)
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
@@ -484,6 +525,10 @@ export function gameManager(data, socket) {
                 return { error: `Invalid event type: ${data.type}` };
             }
             break;
+        // case "START_AR":
+        //     updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location)
+        //     arPosCalculation(data.playerID)
+        //     break;
         default:
             console.log("Invalid event type received: " + data.type);
             return { error: `Invalid event type: ${data.type}` };
