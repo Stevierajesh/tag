@@ -33,7 +33,7 @@ async function fetchState() {
 }
 
 /* --------------------------- DELETE GAME ------------------------------- */
-const deleteGameBtn = document.getElementById('delete-game-btn');
+const deleteGameBtn = document.querySelector('.delete-game-btn');
 
 deleteGameBtn.addEventListener('click', async () => {
   if (!selectedGameID) return;
@@ -79,6 +79,33 @@ function setServerOffline() {
 
   dot.style.background = '#f85149';
   text.textContent = 'Server Offline';
+}
+
+
+/* -------------------------- LOG LOCATIONS ------------------------------ */
+const logLocationsBtn = document.querySelector('.log-locations-btn');
+
+logLocationsBtn.addEventListener('click', () => {
+  const livePlayer = state.players?.[player.playerID];
+  const sampleLocations = {
+    playerID: 'sample-player',
+    location: {
+      lon: livePlayer?.location?.lon || 0,
+      lat: livePlayer?.location?.lat || 0,
+      alt: livePlayer?.location?.alt || 0
+    }
+  };
+  logLocations(sampleLocations);
+});
+
+function logLocations(locations) {
+  fetch(`${API_BASE}/logLocations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locations })
+  }).catch(err => {
+    console.error('Log locations failed', err);
+  });
 }
 
 /* ----------------------------- RENDER ROOT ----------------------------- */

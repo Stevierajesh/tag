@@ -10,6 +10,8 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
+import fs from 'fs';
+
 
 const EVENTTYPES = [
     "CREATE_GAME",
@@ -76,6 +78,32 @@ app.post('/deleteGame', (req, res) => {
     console.error('DeleteGame failed:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+app.post('/logLocations', (req, res) => {
+    try {
+        const { locations } = req.body || {};
+
+        if (!locations) {
+            return res.status(400).json({ error: 'Missing locations' });
+        }
+
+        console.log('Logging locations:', locations);
+        fs.appendFile(
+            'locations_log.txt',
+            JSON.stringify(locations, null, 2) + '\n',
+            (err) => {
+                if (err) {
+                    console.error("Error appending to locations_log.txt:", err);
+                }
+            }
+        );
+
+        return res.status(200).json({ message: 'Locations logged' });
+    } catch (err) {
+        console.error('LogLocations failed:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 
