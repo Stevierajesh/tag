@@ -147,7 +147,7 @@ function updateLocation(gameID, playerID, location) {
     return true;
 }
 
-function arPosCalculation(playerID) {
+function arPosCalculation(playerID, headingDeg) {
     const game = lookForGameWithPlayer(playerID)
     const playersArray = games.get(game).players;
     const user = players.get(playerID)
@@ -156,14 +156,13 @@ function arPosCalculation(playerID) {
 
     //CALCULATIONS SRI MENTIONED HERE.
 
-
-
     for (const p of playersArray) {
         const selectedPlayer = players.get(p.playerID)
         const playerARPosition = geoToLocal(selectedPlayer.location, origin)
+        const alignedPosition = rotateCoordinates(playerARPosition, headingDeg)
         locations.push({
             playerID: p.playerID,
-            location: playerARPosition
+            location: alignedPosition
         })
     }
         //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
@@ -255,6 +254,20 @@ function geoToLocal(playerLocation, origin) {
     const {east, north, up} = ecefToENU(pointECRF, originECEF, origin.lat, origin.lon);
 
     return {"x": east, "y": up, "z": north}
+}
+
+function rotateCoordinates(coordinate, headingDeg) {
+    const psi = headingDeg * Math.PI / 180; 
+    const theta = -psi;
+
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+
+    const x2 = coordinate.x * cosT + coordinate.z * sinT;
+    const y2 = coordinate.y;
+    const z2 = -coordinate.x * sinT + coordinate.z * cosT;
+
+    return { x: x2, y: y2, z: z2 };
 }
 
 function getLocations(gameID) {
@@ -503,10 +516,11 @@ export function gameManager(data, socket) {
             break;
         case "LOCATION_UPDATE":
             //console.log("Player Location: ", data.location)
+            const heading = data.location.heading;
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
             //block using the hide timer.
             if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
-                arPosCalculation(data.playerID)
+                arPosCalculation(data.playerID, heading)
             }
             break;
         case "LEAVE_GAME":
