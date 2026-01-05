@@ -86,17 +86,24 @@ function setServerOffline() {
 const logLocationsBtn = document.querySelector('.log-locations-btn');
 
 logLocationsBtn.addEventListener('click', () => {
-  const livePlayer = state.players?.[player.playerID];
+  const game = state?.games?.[selectedGameID];
+  const firstPlayerID = game?.players?.[0]?.playerID;
+  if (!firstPlayerID) return;
+
+  const livePlayer = state.players?.[firstPlayerID];
+
   const sampleLocations = {
-    playerID: 'sample-player',
+    playerID: firstPlayerID,
     location: {
-      lon: livePlayer?.location?.lon || 0,
-      lat: livePlayer?.location?.lat || 0,
-      alt: livePlayer?.location?.alt || 0
+      lon: livePlayer?.location?.lon ?? null,
+      lat: livePlayer?.location?.lat ?? null,
+      alt: livePlayer?.location?.alt ?? null
     }
   };
+
   logLocations(sampleLocations);
 });
+
 
 function logLocations(locations) {
   fetch(`${API_BASE}/logLocations`, {
@@ -108,14 +115,125 @@ function logLocations(locations) {
   });
 }
 
-/* ----------------------------- RENDER ROOT ----------------------------- */
+//-------------------------- MAP MODAL ------------------------------ */
+let leafletMap;
+let playerMarkers = {};
 
+function initMap() {
+  leafletMap = L.map('map').setView([0, 0], 18);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 20,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(leafletMap);
+}
+
+function renderMapPlayers(game) {
+  if (!game || !leafletMap) return;
+
+  // Track players that should exist for this game
+  const activePlayerIDs = new Set(
+    game.players.map(p => p.playerID)
+  );
+
+  // Remove markers from other games
+  Object.keys(playerMarkers).forEach(playerID => {
+    if (!activePlayerIDs.has(playerID)) {
+      leafletMap.removeLayer(playerMarkers[playerID]);
+      delete playerMarkers[playerID];
+    }
+  });
+
+  // Add / update markers for active game
+  game.players.forEach(p => {
+    const live = state.players?.[p.playerID];
+    if (!live?.location?.lat || !live?.location?.lon) return;
+
+    const { lat, lon } = live.location;
+
+    if (!playerMarkers[p.playerID]) {
+      playerMarkers[p.playerID] = L.marker([lat, lon])
+        .addTo(leafletMap)
+        .bindPopup(`
+          <b>${p.playerID}</b><br/>
+          Status: ${p.status}
+        `);
+    } else {
+      playerMarkers[p.playerID].setLatLng([lat, lon]);
+    }
+  });
+}
+
+
+const mapToggleBtn = document.getElementById('map-toggle-btn');
+const mapModal = document.getElementById('map-modal');
+const mapCloseBtn = document.getElementById('map-close-btn');
+
+mapToggleBtn.addEventListener('click', openMapModal);
+
+mapCloseBtn.addEventListener('click', closeMapModal);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !mapModal.classList.contains('hidden')) {
+    closeMapModal();
+  }
+});
+
+mapModal.addEventListener('click', (e) => {
+  if (e.target === mapModal) {
+    closeMapModal();
+  }
+});
+
+function openMapModal() {
+  mapModal.classList.remove('hidden');
+  mapToggleBtn.classList.add('active');
+
+  if (!leafletMap) initMap();
+
+  setTimeout(() => {
+    leafletMap.invalidateSize();
+    const game = state?.games?.[selectedGameID];
+    centerMapOnPlayers(game);
+    renderMapPlayers(game);
+  }, 50);
+}
+
+
+function closeMapModal() {
+  mapModal.classList.add('hidden');
+  mapToggleBtn.classList.remove('active');
+}
+
+
+function centerMapOnPlayers(game) {
+  if (!game || !leafletMap) return;
+
+  const points = game.players
+    .map(p => {
+      const loc = state.players?.[p.playerID]?.location;
+      if (!loc?.lat || !loc?.lon) return null;
+      return [loc.lat, loc.lon];
+    })
+    .filter(Boolean);
+
+  if (points.length === 0) return;
+
+  leafletMap.fitBounds(points, { padding: [40, 40] });
+}
+
+
+
+/* ----------------------------- RENDER ROOT ----------------------------- */
 function render() {
   renderGamesList();
   renderGameDetails();
   renderRawState();
-}
 
+  if (!mapModal.classList.contains('hidden')) {
+    renderMapPlayers(state?.games?.[selectedGameID]);
+  }
+}
 /* ----------------------------- GAMES LIST ------------------------------ */
 
 function renderGamesList() {
@@ -129,6 +247,12 @@ function renderGamesList() {
     li.className = 'game-item' + (game.gameID === selectedGameID ? ' active' : '');
     li.onclick = () => {
       selectedGameID = game.gameID;
+
+      Object.values(playerMarkers).forEach(marker =>
+        leafletMap?.removeLayer(marker)
+      );
+      playerMarkers = {};
+
       render();
     };
 
@@ -143,6 +267,7 @@ function renderGamesList() {
     li.appendChild(id);
     li.appendChild(meta);
     list.appendChild(li);
+
   });
 }
 
@@ -179,7 +304,7 @@ function renderPlayersTable(game) {
     addCell(tr, player.playerID);
     addCell(tr, player.status);
     addCell(tr, player.isAdmin ? 'YES' : 'NO');
-    
+
     addCell(tr, livePlayer?.location?.lon ?? '—');
     addCell(tr, livePlayer?.location?.lat ?? '—');
     addCell(tr, livePlayer?.location?.alt ?? '—');

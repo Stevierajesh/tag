@@ -4,7 +4,7 @@ export var games = new Map();
 
 var gameTimers = new Map();
 
-var hideTime = 0; //10 seconds
+var hideTime = 0; //0 seconds
 var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
 var arTime = 30000; // 30 seconds
@@ -53,7 +53,8 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         circleCenter: center,
         circleRadius: circleRadius,
         timer: null,
-        sendTimer: null
+        sendTimer: null,
+        block: true
     }
 
     gameTimers.set(gameID, {
@@ -63,7 +64,7 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, gate: false });
+    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, heading: null, gate: false });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -155,7 +156,7 @@ function arPosCalculation(playerID) {
 
     //CALCULATIONS SRI MENTIONED HERE.
 
-    
+
 
     for (const p of playersArray) {
         const selectedPlayer = players.get(p.playerID)
@@ -320,6 +321,7 @@ function startSeekPhase(gameID) {
 
 
     game.phase = "SEEK";
+    game.block = false;
 
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
@@ -349,6 +351,7 @@ function startHidePhase(gameID) {
     }
 
     game.phase = "HIDE";
+    game.block = true;
 
     gameTimer.hideTimer = setTimeout(() => {
         if (checkGameExists(gameID)) {
@@ -464,7 +467,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, gate: false });
+    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, heading: null, gate: false });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -501,7 +504,10 @@ export function gameManager(data, socket) {
         case "LOCATION_UPDATE":
             //console.log("Player Location: ", data.location)
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
-            arPosCalculation(data.playerID)
+            //block using the hide timer.
+            if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
+                arPosCalculation(data.playerID)
+            }
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);

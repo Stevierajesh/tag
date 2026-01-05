@@ -31,6 +31,73 @@
   color: white;
 }
 
+
+#map-toggle-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+#map-toggle-btn:hover {
+  background: #1f2630;
+  border-color: var(--accent);
+}
+#map-toggle-btn:active {
+  transform: scale(0.97);
+}
+.map-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.map-modal.hidden {
+  display: none;
+}
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0f141b;
+  border-bottom: 1px solid var(--border);
+}
+
+
+#map {
+  width: 90vw;
+  height: 80vh;
+  background: #000;
+}
+
+#map {
+  flex: 1;
+}
+
+
+.map-card {
+  width: 90vw;
+  max-width: 1100px;
+  height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+
 .delete-game-btn {
   background-color: red;
 }
@@ -38,6 +105,11 @@
 .log-locations-btn {
   background-color: #3fb950;
 }
+
+.log-locations-btn:hover {
+  background-color: #173b1c;
+}
+
 
 
 .delete-game-btn:hover {

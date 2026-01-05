@@ -6,6 +6,7 @@
     <title>Tag Server Dashboard</title>
     <link rel="stylesheet" href="dashboard.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 
 <body>
@@ -47,7 +48,11 @@
             <div class="game-actions">
                 <button class="delete-game-btn">Delete Game</button>
                 <button class="log-locations-btn">Log Location</button>
+                <button id="map-toggle-btn" class="control-btn">
+                    Open Map
+                </button>
             </div>
+
 
             <h3>Players</h3>
             <table>
@@ -86,7 +91,17 @@
         <span>Refresh: 1s</span>
         <span>Memory Only • Redis Planned</span>
     </footer>
+    <div id="map-modal" class="map-modal hidden">
+        <div class="map-card">
+            <div class="map-header">
+                <span>Live Player Map</span>
+                <button id="map-close-btn">✕</button>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="dashboard.js"></script>
 </body>
 
