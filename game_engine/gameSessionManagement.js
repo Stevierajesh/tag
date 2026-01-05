@@ -63,7 +63,7 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 } });
+    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, gate: false });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -136,7 +136,11 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
-    players.set(playerID, { gameID: gameID, location: location });
+    if(player.gate == false){
+        player.origin = location;
+        player.gate = true;
+    }
+    players.set(playerID, { gameID: gameID, location: location, origin: player.origin, gate: player.gate });
 
 
     return true;
@@ -146,9 +150,12 @@ function arPosCalculation(playerID) {
     const game = lookForGameWithPlayer(playerID)
     const playersArray = games.get(game).players;
     const user = players.get(playerID)
-    const origin = user.location
-
+    const origin = user.origin
     let locations = [];
+
+    //CALCULATIONS SRI MENTIONED HERE.
+
+    
 
     for (const p of playersArray) {
         const selectedPlayer = players.get(p.playerID)
@@ -364,7 +371,10 @@ function gameStart(gameID) {
     games.set(gameID, game);
     console.log(`Game: ${gameID} has started`);
     signalPlayersGameStart(gameID);
-    startHidePhase(gameID);
+    //Wait here for 5 seconds to start hide phase
+    setTimeout(() => {
+        startHidePhase(gameID);
+    }, 5000);
     return true;
 
 }
@@ -454,7 +464,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 } });
+    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, gate: false });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
