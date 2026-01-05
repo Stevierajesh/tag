@@ -9,11 +9,17 @@ var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
 var arTime = 30000; // 30 seconds
 
+var LOGBLOCKED = true;
+
 export var players = new Map();
 export var playerSockets = new Map();
 
 function checkGameExists(gameID) {
     return games.has(gameID);
+}
+
+export function logBlockToggle() {
+    LOGBLOCKED = false;
 }
 
 export function lookForGameWithPlayer(identification) {
@@ -28,13 +34,13 @@ export function lookForGameWithPlayer(identification) {
 }
 
 function gameCreate(playerID, circleRadius, center, origin, socket) {
-    if(lookForGameWithPlayer(playerID)){
+    if (lookForGameWithPlayer(playerID)) {
         console.log("ERROR: PLAYER ALREADY IN A GAME");
         return false;
     }
     let gameID = Math.random().toString(36).substring(2, 6);
-    if(checkGameExists(gameID)){
-        while(checkGameExists(gameID)){
+    if (checkGameExists(gameID)) {
+        while (checkGameExists(gameID)) {
             gameID = Math.random().toString(36).substring(2, 6);
         }
     }
@@ -64,7 +70,7 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, heading: null, gate: false });
+    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -131,13 +137,13 @@ function updateLocation(gameID, playerID, location) {
         return false;
     }
 
-    if(!players.has(playerID)){
+    if (!players.has(playerID)) {
         return false;
     }
     let player = players.get(playerID);
 
     player.location = location;
-    if(player.gate == false){
+    if (player.gate == false) {
         player.origin = location;
         player.gate = true;
     }
@@ -165,16 +171,19 @@ function arPosCalculation(playerID, headingDeg) {
             location: alignedPosition
         })
     }
-        //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
-    // fs.appendFile(
-    //     'log.txt',
-    //     JSON.stringify(locations, null, 2) + '\n',
-    //     (err) => {
-    //         if (err) {
-    //             console.error("Error appending to log.txt:", err);
-    //         }
-    //     }
-    // );
+    //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
+    if (LOGBLOCKED == false) {
+        fs.appendFile(
+            'log.txt',
+            JSON.stringify(locations, null, 2) + '\n',
+            (err) => {
+                if (err) {
+                    console.error("Error appending to log.txt:", err);
+                }
+            }
+        );
+        LOGBLOCKED = true; //Reset the block
+    }
     let playerSocket = playerSockets.get(playerID);
     if (playerSocket && playerSocket.readyState === 1) {
         try {
@@ -190,13 +199,13 @@ function arPosCalculation(playerID, headingDeg) {
             leaveGame(lookForGameWithPlayer(playerID), playerID);
         }
     } else if (!playerSocket) {
-        if(playerID){
+        if (playerID) {
             console.error("Player socket missing:", playerID);
-        } else{
+        } else {
             console.log("Player ID is missing");
         }
     } else {
-        if(playerID){
+        if (playerID) {
             console.error("Player socket not open:", playerID, playerSocket.readyState);
         } else {
             console.log("Player ID is missing");
@@ -211,7 +220,7 @@ function geoToECEF(location) {
     const latRad = location.lat * Math.PI / 180;
     const lonRad = location.lon * Math.PI / 180;
     const alt = location.alt ?? 0;
-    
+
     const sinLat = Math.sin(latRad);
     const cosLat = Math.cos(latRad);
     const sinLon = Math.sin(lonRad);
@@ -223,13 +232,13 @@ function geoToECEF(location) {
     const y = (N + alt) * cosLat * sinLon;
     const z = (N * (1 - e2) + alt) * sinLat;
 
-    return {x, y, z};
+    return { x, y, z };
 }
 
 function ecefToENU(pointECRF, originECEF, originLat, originLon) {
     const lat0 = originLat * Math.PI / 180;
     const lon0 = originLon * Math.PI / 180;
-    
+
     const dx = pointECRF.x - originECEF.x;
     const dy = pointECRF.y - originECEF.y;
     const dz = pointECRF.z - originECEF.z;
@@ -243,7 +252,7 @@ function ecefToENU(pointECRF, originECEF, originLat, originLon) {
     const north = (-sinLat * cosLon * dx - sinLat * sinLon * dy + cosLat * dz) * -1;
     const up = cosLat * cosLon * dx + cosLat * sinLon * dy + sinLat * dz;
 
-    return {east, north, up};
+    return { east, north, up };
 }
 
 function geoToLocal(playerLocation, origin) {
@@ -251,13 +260,13 @@ function geoToLocal(playerLocation, origin) {
 
     const pointECRF = geoToECEF(playerLocation);
 
-    const {east, north, up} = ecefToENU(pointECRF, originECEF, origin.lat, origin.lon);
+    const { east, north, up } = ecefToENU(pointECRF, originECEF, origin.lat, origin.lon);
 
-    return {"x": east, "y": up, "z": north}
+    return { "x": east, "y": up, "z": north }
 }
 
 function rotateCoordinates(coordinate, headingDeg) {
-    const psi = headingDeg * Math.PI / 180; 
+    const psi = headingDeg * Math.PI / 180;
     const theta = -psi;
 
     const cosT = Math.cos(theta);
@@ -297,13 +306,13 @@ function getLocations(gameID) {
                 leaveGame(lookForGameWithPlayer(player.playerID), player.playerID);
             }
         } else if (!playerSocket) {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket missing:", player.playerID);
-            } else{
+            } else {
                 console.log("Player ID is missing");
             }
         } else {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket not open:", player.playerID, playerSocket.readyState);
             } else {
                 console.log("Player ID is missing");
@@ -407,13 +416,13 @@ function signalPlayersGameStart(gameID) {
                 console.error("Failed To Send GAME_STARTED", err);
             }
         } else if (!playerSocket) {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket missing:", player.playerID);
-            } else{
+            } else {
                 console.log("Player ID is missing");
             }
         } else {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket not open:", player.playerID, playerSocket.readyState);
             } else {
                 console.log("Player ID is missing");
@@ -433,13 +442,13 @@ function signalPlayersGameEnd(gameID) {
                 console.error("Failed To Send GAME_ENDED", err);
             }
         } else if (!playerSocket) {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket missing:", player.playerID);
-            } else{
+            } else {
                 console.log("Player ID is missing");
             }
         } else {
-            if(player.playerID){
+            if (player.playerID) {
                 console.error("Player socket not open:", player.playerID, playerSocket.readyState);
             } else {
                 console.log("Player ID is missing");
@@ -480,7 +489,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: {x: 0, y: 0, z: 0}, heading: null, gate: false });
+    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -494,7 +503,7 @@ export function gameManager(data, socket) {
         case "CREATE_GAME":
             console.log("Origin: ", data.origin)
             game = gameCreate(data.playerID, data.circleRadius, data.circleCenter, data.origin, socket);
-            if(game == false){
+            if (game == false) {
                 return { error: "player already in a game" };
             }
             games.set(game.gameID, game);
@@ -519,9 +528,9 @@ export function gameManager(data, socket) {
             const heading = data.location.heading;
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
             //block using the hide timer.
-            if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
-                arPosCalculation(data.playerID, heading)
-            }
+            //if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
+            arPosCalculation(data.playerID, heading)
+            //}
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);

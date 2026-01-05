@@ -1,0 +1,54 @@
+[
+  {
+    "playerID": "55B80020-6EE9-47F8-8171-3E0F94B5AC06",
+    "location": {
+      "x": null,
+      "y": 0,
+      "z": null
+    }
+  },
+  {
+    "playerID": "3115157B-327B-4B81-8E16-3ED4F551B1D2",
+    "location": {
+      "x": null,
+      "y": -1.0729148163209183,
+      "z": null
+    }
+  }
+]
+[
+  {
+    "playerID": "55B80020-6EE9-47F8-8171-3E0F94B5AC06",
+    "location": {
+      "x": null,
+      "y": -1.3588642368146542,
+      "z": null
+    }
+  },
+  {
+    "playerID": "3115157B-327B-4B81-8E16-3ED4F551B1D2",
+    "location": {
+      "x": null,
+      "y": -1.4267454146747844,
+      "z": null
+    }
+  }
+]
+[
+  {
+    "playerID": "55B80020-6EE9-47F8-8171-3E0F94B5AC06",
+    "location": {
+      "x": null,
+      "y": -1.3588642368146542,
+      "z": null
+    }
+  },
+  {
+    "playerID": "3115157B-327B-4B81-8E16-3ED4F551B1D2",
+    "location": {
+      "x": null,
+      "y": -1.2921483431125398,
+      "z": null
+    }
+  }
+]

@@ -115,6 +115,26 @@ function logLocations(locations) {
   });
 }
 
+/* -------------------------- TOGGLE LOG BLOCK ------------------------------ */
+const toggleLogBlockBtn = document.querySelector('.toggle-log-block-btn');
+
+toggleLogBlockBtn.addEventListener('click', () => {
+  logBlockToggle();
+});
+
+function logBlockToggle() {
+  fetch(`${API_BASE}/toggleLogBlock`, {
+    method: 'POST'
+  }).catch(err => {
+    console.error('Toggle log block failed', err);
+  });
+}
+
+
+
+
+
+
 //-------------------------- MAP MODAL ------------------------------ */
 let leafletMap;
 let playerMarkers = {};

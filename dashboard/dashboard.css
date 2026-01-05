@@ -106,6 +106,16 @@
   background-color: #3fb950;
 }
 
+.toggle-log-block-btn {
+  background-color: #b49655;
+  border-radius: 30px;
+  color: white;
+}
+
+.toggle-log-block-btn:hover {
+  background-color: #8c6f3f;
+}
+
 .log-locations-btn:hover {
   background-color: #173b1c;
 }

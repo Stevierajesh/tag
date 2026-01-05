@@ -38,7 +38,8 @@ import {
     games,
     players,
     playerSockets,
-    deleteGame
+    deleteGame,
+    logBlockToggle
 } from './game_engine/gameSessionManagement.js';
 
 /* ---------------- DEBUG ROUTE ---------------- */
@@ -102,6 +103,16 @@ app.post('/logLocations', (req, res) => {
         return res.status(200).json({ message: 'Locations logged' });
     } catch (err) {
         console.error('LogLocations failed:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/toggleLogBlock', (req, res) => {
+    try {
+        logBlockToggle();
+        return res.status(200).json({ message: 'Log block toggled' });
+    } catch (err) {
+        console.error('ToggleLogBlock failed:', err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
