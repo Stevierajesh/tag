@@ -68,7 +68,7 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null});
+    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null, LOCAL_POSITIONS: {x: 0, y: 0, z: 0} });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
@@ -140,14 +140,15 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
-    //console.log("Player Location: ", player.location);
+    console.log("Player ID: ",  playerID);
+    console.log("Player Location: ",  player.location);
     // player.heading = location.heading;  
 
     if (player.gate == false) {
         player.origin = location;
         player.gate = true;
     }
-    players.set(playerID, { gameID: gameID, location: location, origin: player.origin, gate: player.gate, heading: location.heading, prevHeading: player.prevHeading});
+    players.set(playerID, { gameID: gameID, location: location, origin: player.origin, gate: player.gate, heading: location.heading, prevHeading: player.prevHeading, LOCAL_POSITIONS: player.LOCAL_POSITIONS});
 
 
     return true;
@@ -187,7 +188,7 @@ function getLocations(gameID) {
         if (socket && socket.readyState === 1) {
             try {
                 socket.send(JSON.stringify(payload));
-                console.log("Payload:"+ JSON.stringify(payload));
+                //console.log("Payload:"+ JSON.stringify(payload));
             } catch (err) {
                 console.error("Failed to send PLAYERS_UPDATE", err);
                 playerSockets.delete(p.playerID);
@@ -361,7 +362,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false , prevHeading: null});
+    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false , prevHeading: null, LOCAL_POSITIONS: {x: 0, y: 0, z: 0} });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -397,8 +398,14 @@ export function gameManager(data, socket) {
             break;
         case "LOCATION_UPDATE":
             //console.log("Player Location: ", data.location)
-            const heading = data.location.heading;
-            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
+            const heading = data.location.heading
+            const gameID1 = lookForGameWithPlayer(data.playerID);
+            
+            if (!gameID1) {
+                return { error: data.playerID + " not in a game" };
+            }
+            //console.log(`Player ID: ${data.playerID}, Game ID: ${gameID1}`);
+            updateLocation(gameID1, data.playerID, data.location);
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
@@ -428,6 +435,26 @@ export function gameManager(data, socket) {
             break;
         case "END_AR":
             //let gameTimer = gameTimers.get(lookForGameWithPlayer(data.playerID));
+            break;
+        case "LOCAL_POSITIONS":
+            //const locations = getLocations(lookForGameWithPlayer(data.playerID));
+
+            let player2 = players.get(data.playerID);
+            player2.LOCAL_POSITIONS = data.location;
+
+            if(LOGBLOCKED == false){
+                const logString = `${new Date().toISOString()},${data.playerID},${data.location.x},${data.location.y},${data.location.z}\n`;
+                fs.appendFile('local_positions_log.txt', logString, (err) => {
+                    if (err) {
+                        console.error('Error writing to log file:', err);
+                    }
+                });
+
+                LOGBLOCKED = true;
+            }
+
+            players.set(data.playerID, { gameID: player2.gameID, location: player2.location, origin: player2.origin, gate: player2.gate, heading: player2.heading, prevHeading: player2.prevHeading, LOCAL_POSITIONS: player2.LOCAL_POSITIONS });
+            
             break;
         default:
             console.log("Invalid event type received: " + data.type);
