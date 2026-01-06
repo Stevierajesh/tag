@@ -1,7 +1,19 @@
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+
 const REFRESH_INTERVAL = 1000;
 
 let state = null;
 let selectedGameID = null;
+let threeDViewActive = false;
+let threeDViewPlayerID = null;
+
+setInterval(() => {
+  if (!threeDViewActive || !threeDViewPlayerID) return;
+  updatePlayerMeshes();
+}, 200);
+
+
 
 /* ----------------------------- FETCH STATE ----------------------------- */
 
@@ -242,6 +254,137 @@ function centerMapOnPlayers(game) {
   leafletMap.fitBounds(points, { padding: [40, 40] });
 }
 
+//Three D View Toggle Button
+const threeDBtn = document.getElementById('threedmap-toggle-btn');
+const overlay = document.getElementById('threedmap-overlay');
+const playerListEl = document.getElementById('threedmap-player-list');
+const cancelBtn = document.getElementById('threedmap-cancel');
+
+threeDBtn.addEventListener('click', () => {
+  openPlayerSelect();
+});
+
+cancelBtn.addEventListener('click', () => {
+  closePlayerSelect();
+});
+
+
+
+function openPlayerSelect() {
+  playerListEl.innerHTML = '';
+  console.log('state.players =', state.players);
+  console.log('Array?', Array.isArray(state.players));
+
+  // Adjust this depending on your actual state shape
+  const players = Array.from(playersMapFromState());
+
+  players.forEach(player => {
+    const div = document.createElement('div');
+    div.className = 'threedmap-player';
+    div.textContent = player.playerID;
+
+    div.onclick = () => {
+      enter3DView(player.playerID);
+    };
+
+    playerListEl.appendChild(div);
+  });
+
+  overlay.classList.remove('hidden');
+}
+
+function closePlayerSelect() {
+  overlay.classList.add('hidden');
+}
+
+
+function playersMapFromState() {
+  if (!state || !state.players) return [];
+  return Object.entries(state.players).map(([playerID, data]) => ({
+    playerID,
+    ...data
+  }));
+}
+
+
+
+
+
+
+function show3DPlaceholder() {
+  const panel = document.createElement('div');
+  panel.id = 'threedmap-root';
+
+  panel.innerHTML = `
+    <div id="threedmap-header">
+      <div>
+        <strong>3D Live View</strong><br>
+        Viewing perspective of ${threeDViewPlayerID}
+      </div>
+      <button id="exit-3d" class="control-btn">Exit</button>
+    </div>
+
+    <div id="threedmap-canvas"></div>
+  `;
+
+  document.body.appendChild(panel);
+  document.getElementById('exit-3d').onclick = exit3DView;
+}
+
+
+function getRelativePlayerPositions(originPlayerID) {
+  if (!state || !state.players) return [];
+
+  const origin = state.players[originPlayerID];
+  if (!origin || !origin.location) return [];
+
+  const { lat: lat0, lon: lon0, alt: alt0 } = origin.location;
+  const lat0Rad = lat0 * Math.PI / 180;
+
+  const METERS_PER_DEG_LAT = 111320;
+  const METERS_PER_DEG_LON = 111320 * Math.cos(lat0Rad);
+
+  const results = [];
+
+  for (const [playerID, player] of Object.entries(state.players)) {
+    if (!player.location) continue;
+
+    const { lat, lon, alt } = player.location;
+
+    const dx = (lon - lon0) * METERS_PER_DEG_LON; // east / west
+    const dz = (lat - lat0) * METERS_PER_DEG_LAT; // north / south
+    const dy = (alt ?? 0) - (alt0 ?? 0); // vertical
+
+    results.push({
+      playerID,
+      relative: {
+        x: dx,
+        y: dy,
+        z: dz
+      },
+      heading: player.heading ?? null
+    });
+  }
+
+  return results;
+}
+
+setInterval(() => {
+  if (!threeDViewActive || !threeDViewPlayerID) return;
+
+  const rel = getRelativePlayerPositions(threeDViewPlayerID);
+  console.clear();
+  console.table(
+    rel.map(p => ({
+      id: p.playerID.slice(0, 6),
+      x: p.relative.x.toFixed(2),
+      y: p.relative.y.toFixed(2),
+      z: p.relative.z.toFixed(2)
+    }))
+  );
+}, 500);
+
+
 
 
 /* ----------------------------- RENDER ROOT ----------------------------- */
@@ -377,6 +520,94 @@ function addCell(row, text) {
   const td = document.createElement('td');
   td.textContent = text;
   row.appendChild(td);
+}
+let scene, camera, renderer;
+let originSphere;
+let playerMeshes = new Map();
+
+function initThreeScene() {
+  const container = document.getElementById('threedmap-canvas');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b0f14);
+
+  camera = new THREE.PerspectiveCamera(
+    60,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    1000
+  );
+
+  camera.position.set(0, 15, 20);
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  // Grid (critical for perception)
+  const grid = new THREE.GridHelper(100, 20, 0x30363d, 0x30363d);
+  scene.add(grid);
+
+  // Origin sphere (YOU)
+  const geo = new THREE.SphereGeometry(0.6, 16, 16);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x2ea043 });
+  originSphere = new THREE.Mesh(geo, mat);
+  scene.add(originSphere);
+
+  animate();
+}
+function animate() {
+  if (!threeDViewActive) return;
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+function enter3DView(playerID) {
+  threeDViewActive = true;
+  threeDViewPlayerID = playerID;
+
+  closePlayerSelect();
+  show3DPlaceholder();
+
+  setTimeout(initThreeScene, 0); // wait for DOM
+}
+
+
+
+function exit3DView() {
+  threeDViewActive = false;
+  threeDViewPlayerID = null;
+
+  playerMeshes.clear();
+
+  renderer?.dispose();
+  document.getElementById('threedmap-root')?.remove();
+}
+
+function updatePlayerMeshes() {
+  if (!threeDViewActive) return;
+
+  const rel = getRelativePlayerPositions(threeDViewPlayerID);
+
+  rel.forEach(p => {
+    if (p.playerID === threeDViewPlayerID) return;
+
+    let mesh = playerMeshes.get(p.playerID);
+    if (!mesh) {
+      const geo = new THREE.SphereGeometry(0.4, 12, 12);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xf85149 });
+      mesh = new THREE.Mesh(geo, mat);
+      scene.add(mesh);
+      playerMeshes.set(p.playerID, mesh);
+    }
+
+    mesh.position.set(
+      p.relative.x,
+      p.relative.y,
+      p.relative.z
+    );
+  });
 }
 
 /* ----------------------------- BOOT ------------------------------------- */

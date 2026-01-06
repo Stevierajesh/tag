@@ -11,6 +11,7 @@
 .game-details {
   position: relative;
 }
+
 .game-actions {
   position: absolute;
   top: 12px;
@@ -18,7 +19,8 @@
 
   display: flex;
   flex-direction: column;
-  gap: 8px; /* spacing between buttons */
+  gap: 8px;
+  /* spacing between buttons */
 }
 
 .delete-game-btn,
@@ -43,13 +45,108 @@
   transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
 }
 
+#threedmap-toggle-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+#threedmap-toggle-btn:hover {
+  background: #1f2630;
+  border-color: var(--accent);
+}
+
+
+#threedmap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#threedmap-overlay.hidden {
+  display: none;
+}
+
+.threedmap-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 320px;
+}
+
+.threedmap-panel h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.threedmap-player {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.threedmap-player:hover {
+  background: var(--bg);
+}
+
+.threedmap-actions {
+  margin-top: 12px;
+  text-align: right;
+}
+
+#threedmap-placeholder {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  padding: 20px;
+  z-index: 999;
+}
+
+
+#threedmap-root {
+  position: fixed;
+  inset: 0;
+  background: #0b0f14;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+}
+
+#threedmap-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #c9d1d9;
+}
+
+#threedmap-canvas {
+  flex: 1;
+}
+
+
 #map-toggle-btn:hover {
   background: #1f2630;
   border-color: var(--accent);
 }
+
 #map-toggle-btn:active {
   transform: scale(0.97);
 }
+
 .map-modal {
   position: fixed;
   inset: 0;
@@ -64,6 +161,7 @@
 .map-modal.hidden {
   display: none;
 }
+
 .map-header {
   display: flex;
   justify-content: space-between;
@@ -103,13 +201,25 @@
 }
 
 .log-locations-btn {
-  background-color: #3fb950;
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
 }
 
 .toggle-log-block-btn {
-  background-color: #b49655;
-  border-radius: 30px;
-  color: white;
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
 }
 
 .toggle-log-block-btn:hover {

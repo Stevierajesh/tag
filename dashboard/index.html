@@ -52,9 +52,12 @@
                 <button id="map-toggle-btn" class="control-btn">
                     Open Map
                 </button>
+                <button id="threedmap-toggle-btn" class="control-btn">
+                    3D View
+                </button>
 
             </div>
-
+            <br>
 
             <h3>Players</h3>
             <table>
@@ -102,9 +105,20 @@
             <div id="map"></div>
         </div>
     </div>
+    <div id="threedmap-overlay" class="hidden">
+        <div class="threedmap-panel">
+            <h3>Select Player Perspective</h3>
+            <div id="threedmap-player-list"></div>
 
+            <div class="threedmap-actions">
+                <button id="threedmap-cancel" class="control-btn danger">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="dashboard.js"></script>
+    <script type="module" src="dashboard.js"></script>
 </body>
 
 </html>
