@@ -12,20 +12,225 @@
   position: relative;
 }
 
-.delete-game-btn {
+.game-actions {
   position: absolute;
   top: 12px;
   right: 12px;
 
-  margin: 0; /* remove margin-top */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* spacing between buttons */
+}
+
+.delete-game-btn,
+.log-locations-btn {
   padding: 8px 12px;
-  background-color: red;
-  color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
+  color: white;
 }
+
+
+#map-toggle-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+#threedmap-toggle-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+#threedmap-toggle-btn:hover {
+  background: #1f2630;
+  border-color: var(--accent);
+}
+
+
+#threedmap-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#threedmap-overlay.hidden {
+  display: none;
+}
+
+.threedmap-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 320px;
+}
+
+.threedmap-panel h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.threedmap-player {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.threedmap-player:hover {
+  background: var(--bg);
+}
+
+.threedmap-actions {
+  margin-top: 12px;
+  text-align: right;
+}
+
+#threedmap-placeholder {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  padding: 20px;
+  z-index: 999;
+}
+
+
+#threedmap-root {
+  position: fixed;
+  inset: 0;
+  background: #0b0f14;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+}
+
+#threedmap-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #c9d1d9;
+}
+
+#threedmap-canvas {
+  flex: 1;
+}
+
+
+#map-toggle-btn:hover {
+  background: #1f2630;
+  border-color: var(--accent);
+}
+
+#map-toggle-btn:active {
+  transform: scale(0.97);
+}
+
+.map-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.map-modal.hidden {
+  display: none;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0f141b;
+  border-bottom: 1px solid var(--border);
+}
+
+
+#map {
+  width: 90vw;
+  height: 80vh;
+  background: #000;
+}
+
+#map {
+  flex: 1;
+}
+
+
+.map-card {
+  width: 90vw;
+  max-width: 1100px;
+  height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.delete-game-btn {
+  background-color: red;
+}
+
+.log-locations-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+.toggle-log-block-btn {
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
+}
+
+.toggle-log-block-btn:hover {
+  background-color: #8c6f3f;
+}
+
+.log-locations-btn:hover {
+  background-color: #173b1c;
+}
+
+
 
 .delete-game-btn:hover {
   background-color: darkred;
@@ -156,7 +361,8 @@ table {
   font-size: 11px;
 }
 
-th, td {
+th,
+td {
   padding: 6px;
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -196,10 +402,25 @@ footer {
   display: inline-block;
 }
 
-.phase-LOBBY { background: #2f81f7; color: white; }
-.phase-HIDE  { background: #f85149; color: white; }
-.phase-SEEK  { background: #3fb950; color: white; }
-.phase-END   { background: #8b949e; color: black; }
+.phase-LOBBY {
+  background: #2f81f7;
+  color: white;
+}
+
+.phase-HIDE {
+  background: #f85149;
+  color: white;
+}
+
+.phase-SEEK {
+  background: #3fb950;
+  color: white;
+}
+
+.phase-END {
+  background: #8b949e;
+  color: black;
+}
 
 
 /* =========================
@@ -249,7 +470,8 @@ footer {
     white-space: nowrap;
   }
 
-  th, td {
+  th,
+  td {
     font-size: 10px;
     padding: 6px 8px;
   }

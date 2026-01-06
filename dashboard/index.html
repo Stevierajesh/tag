@@ -6,6 +6,7 @@
     <title>Tag Server Dashboard</title>
     <link rel="stylesheet" href="dashboard.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 
 <body>
@@ -44,7 +45,19 @@
                 <div><label>Timer</label><span id="detail-timer">—</span></div>
             </div>
 
-            <button id="delete-game-btn" class="delete-game-btn">Delete Game</button>
+            <div class="game-actions">
+                <button class="delete-game-btn">Delete Game</button>
+                <button class="log-locations-btn">Log Location</button>
+                <button class="toggle-log-block-btn">LOG AR POS</button>
+                <button id="map-toggle-btn" class="control-btn">
+                    Open Map
+                </button>
+                <button id="threedmap-toggle-btn" class="control-btn">
+                    3D View
+                </button>
+
+            </div>
+            <br>
 
             <h3>Players</h3>
             <table>
@@ -63,6 +76,7 @@
                     <!-- populated by dashboard.js -->
                 </tbody>
             </table>
+
         </section>
 
         <!-- RIGHT: Raw State -->
@@ -82,8 +96,29 @@
         <span>Refresh: 1s</span>
         <span>Memory Only • Redis Planned</span>
     </footer>
+    <div id="map-modal" class="map-modal hidden">
+        <div class="map-card">
+            <div class="map-header">
+                <span>Live Player Map</span>
+                <button id="map-close-btn">✕</button>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+    <div id="threedmap-overlay" class="hidden">
+        <div class="threedmap-panel">
+            <h3>Select Player Perspective</h3>
+            <div id="threedmap-player-list"></div>
 
-    <script src="dashboard.js"></script>
+            <div class="threedmap-actions">
+                <button id="threedmap-cancel" class="control-btn danger">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="dashboard.js"></script>
 </body>
 
 </html>

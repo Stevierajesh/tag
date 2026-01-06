@@ -10,6 +10,9 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 
+import fs from 'fs';
+
+
 const EVENTTYPES = [
     "CREATE_GAME",
     "JOIN_GAME",
@@ -19,13 +22,14 @@ const EVENTTYPES = [
     "START_GAME",
     "GET_LOCATIONS",
     "END_GAME",
-    "SHOW_PLAYERS"
+    "SHOW_PLAYERS",
+    "START_AR"
 ];
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
-
+app.use(express.json());
 
 import {
     gameManager,
@@ -34,40 +38,82 @@ import {
     games,
     players,
     playerSockets,
-    deleteGame
+    deleteGame,
+    logBlockToggle
 } from './game_engine/gameSessionManagement.js';
 
 /* ---------------- DEBUG ROUTE ---------------- */
+app.set('trust proxy', true);
+
 
 app.get('/__debug/state', (req, res) => {
 
-    if (req.socket.remoteAddress !== '127.0.0.1' &&
-        req.socket.remoteAddress !== '::1') {
-        return res.status(403).end();
-    }
-
-    // if (!socket) {
-    //     console.log("Missing socket for player:");
-    // }
-    res.json({
-        games: Object.fromEntries(games),
-        players: Object.fromEntries(players),
-        playerSockets: Object.fromEntries(
-            [...playerSockets].map(([id, socket]) => [
-                id,
-                socket.readyState === WebSocket.OPEN ? 'OPEN' : 'CLOSED'
-            ])
-        )
-    });
+  res.json({
+    games: Object.fromEntries(games),
+    players: Object.fromEntries(players),
+    playerSockets: Object.fromEntries(
+      [...playerSockets].map(([id, socket]) => [
+        id,
+        socket.readyState === 1 ? 'OPEN' : 'CLOSED'
+      ])
+    )
+  });
 });
 
-app.post('deleteGame', (req, res) => {
-    const { gameID } = req.body;
-    if (games.has(gameID)) {
-        deleteGame(gameID);
-        return res.status(200).json({ message: 'Game deleted' });
-    } else {
-        return res.status(404).json({ error: 'Game not found' });
+
+app.post('/deleteGame', (req, res) => {
+  try {
+    const { gameID } = req.body || {};
+
+    if (!gameID) {
+      return res.status(400).json({ error: 'Missing gameID' });
+    }
+
+    if (!games.has(gameID)) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    deleteGame(gameID);//RECURSION ISSUE? 
+    return res.status(200).json({ message: 'Game deleted' });
+  } catch (err) {
+    console.error('DeleteGame failed:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/logLocations', (req, res) => {
+    try {
+        const { locations } = req.body || {};
+
+        if (!locations) {
+            return res.status(400).json({ error: 'Missing locations' });
+        }
+
+        console.log('Logging locations:', locations);
+        fs.appendFile(
+            'locations_log.txt',
+            JSON.stringify(locations, null, 2) + '\n',
+            (err) => {
+                if (err) {
+                    console.error("Error appending to locations_log.txt:", err);
+                }
+            }
+        );
+
+        return res.status(200).json({ message: 'Locations logged' });
+    } catch (err) {
+        console.error('LogLocations failed:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/toggleLogBlock', (req, res) => {
+    try {
+        logBlockToggle();
+        return res.status(200).json({ message: 'Log block toggled' });
+    } catch (err) {
+        console.error('ToggleLogBlock failed:', err);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

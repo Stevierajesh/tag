@@ -244,17 +244,28 @@ Broadcast to clients with current player locations during reveal phases.
 
 ```json
 {
-    "type": "PLAYERS_UPDATE",
-    "locations": [
-        {
-            "playerID": "p42",
-            "y": 40.21049935750206,
-            "x": -83.02927517362363,
-            "z": 276.4463550494984
-        }
-    ],
-    "timestamp": 1739999999
+  "type": "PLAYERS_UPDATE",
+  "locations": [
+    {
+      "playerID": "player1",
+      "location": {
+        "x": 12.34,
+        "y": 56.78,
+        "z": 90.12
+      }
+    },
+    {
+      "playerID": "player2",
+      "location": {
+        "x": -45.67,
+        "y": 89.01,
+        "z": -23.45
+      }
+    }
+  ],
+  "timestamp": 1704537600000
 }
+
 ```
 
 ### LEAVE_GAME
