@@ -74,7 +74,6 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
     games.set(game.gameID, game);
     return game;
 }
-
 export function deleteGame(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
@@ -122,6 +121,8 @@ export function leaveGame(gameID, playerID) {
     return true;
 }
 
+
+
 function updateLocation(gameID, playerID, location) {
     try {
         if (checkGameExists(gameID) == false) {
@@ -151,6 +152,7 @@ function updateLocation(gameID, playerID, location) {
 
     return true;
 }
+
 
 function getLocations(gameID) {
     if (!checkGameExists(gameID)) {
@@ -211,6 +213,8 @@ function startSeekPhase(gameID) {
     if (gameTimer.intervalTime) {
         clearInterval(gameTimer.intervalTime);
     }
+
+
 
     game.phase = "SEEK";
 
@@ -394,12 +398,7 @@ export function gameManager(data, socket) {
         case "LOCATION_UPDATE":
             //console.log("Player Location: ", data.location)
             const heading = data.location.heading;
-            //console.log("Heading: ", heading);
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
-            //block using the hide timer.
-            //if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
-            //arPosCalculation(data.playerID)
-            //}
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
@@ -426,7 +425,6 @@ export function gameManager(data, socket) {
                 player.prevHeading = data.location.heading;
                 players.set(data.playerID, { gameID: player.gameID, location: player.location, origin: player.origin, gate: player.gate, heading: player.heading, prevHeading: player.prevHeading });
             }
-            // arPosCalculation(data.playerID, data.location.heading)
             break;
         case "END_AR":
             //let gameTimer = gameTimers.get(lookForGameWithPlayer(data.playerID));
