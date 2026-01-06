@@ -610,6 +610,20 @@ function updatePlayerMeshes() {
   });
 }
 
+
+//Additional Administrative Functions can be added here-------------------------------------
+
+//createGame()
+//makeAdmin()
+//kickPlayer()
+//endGame()
+//adminNotifications()
+                                   
+
+
+
+
+
 /* ----------------------------- BOOT ------------------------------------- */
 
 fetchState();

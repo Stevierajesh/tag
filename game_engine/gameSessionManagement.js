@@ -7,7 +7,6 @@ var gameTimers = new Map();
 var hideTime = 0; //0 seconds
 var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
-var arTime = 200; // 30 seconds
 
 var LOGBLOCKED = true;
 
@@ -60,23 +59,22 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         circleRadius: circleRadius,
         timer: null,
         sendTimer: null,
-        block: true
     }
 
     gameTimers.set(gameID, {
         hideTimer: null,
         seekTimer: null,
         intervalTime: null,
-        ARtimer: null
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { y: 0, x: 0, z: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null});
+    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null});
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
     return game;
 }
+
 export function deleteGame(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
@@ -94,7 +92,6 @@ export function deleteGame(gameID) {
         clearTimeout(timer.seekTimer);
         clearTimeout(timer.hideTimer);
         clearInterval(timer.intervalTime);
-        clearInterval(timer.ARtimer);
         gameTimers.delete(gameID);
     }
 
@@ -124,8 +121,6 @@ export function leaveGame(gameID, playerID) {
     players.delete(playerID);
     return true;
 }
-
-
 
 function updateLocation(gameID, playerID, location) {
     try {
@@ -157,194 +152,50 @@ function updateLocation(gameID, playerID, location) {
     return true;
 }
 
-function arPosCalculation(playerID) {
-    const game = lookForGameWithPlayer(playerID)
-    const playersArray = games.get(game).players;
-    const user = players.get(playerID)
-    const origin = user.origin
-    const headingDeg = user.prevHeading
-    let locations = [];
-
-
-
-    //CALCULATIONS SRI MENTIONED HERE.
-
-    for (const p of playersArray) {
-        const selectedPlayer = players.get(p.playerID)
-        const playerARPosition = geoToLocal(selectedPlayer.location, origin)
-        const alignedPosition = rotateCoordinates(playerARPosition, headingDeg)
-        locations.push({
-            playerID: p.playerID,
-            location: alignedPosition
-        })
-    }
-    //OPTIONAL LOGGING TO FILE------------------------------------------------------------------------------------------
-    if (LOGBLOCKED == false) {
-        fs.appendFile(
-            'log.txt',
-            JSON.stringify(locations, null, 2) + '\n',
-            (err) => {
-                if (err) {
-                    console.error("Error appending to log.txt:", err);
-                }
-            }
-        );
-        LOGBLOCKED = true; //Reset the block
-    }
-    let playerSocket = playerSockets.get(playerID);
-    if (playerSocket && playerSocket.readyState === 1) {
-        try {
-            playerSocket.send(JSON.stringify({
-                type: "AR_POSITIONS",
-                locations: locations,
-                timestamp: Date.now()
-            }));
-        } catch (err) {
-            console.error("Failed to send AR_POSITIONS", err);
-            playerSockets.delete(playerID);
-            players.delete(playerID);
-            leaveGame(lookForGameWithPlayer(playerID), playerID);
-        }
-    } else if (!playerSocket) {
-        if (playerID) {
-            console.error("Player socket missing:", playerID);
-        } else {
-            console.log("Player ID is missing");
-        }
-    } else {
-        if (playerID) {
-            console.error("Player socket not open:", playerID, playerSocket.readyState);
-        } else {
-            console.log("Player ID is missing");
-        }
-    }
-}
-
-function geoToECEF(location) {
-    const a = 6378137.0;
-    const e2 = 6.69437999014e-3;
-
-    const latRad = location.lat * Math.PI / 180;
-    const lonRad = location.lon * Math.PI / 180;
-    const alt = location.alt ?? 0;
-
-    const sinLat = Math.sin(latRad);
-    const cosLat = Math.cos(latRad);
-    const sinLon = Math.sin(lonRad);
-    const cosLon = Math.cos(lonRad);
-
-    const N = a / Math.sqrt(1 - e2 * sinLat * sinLat);
-
-    const x = (N + alt) * cosLat * cosLon;
-    const y = (N + alt) * cosLat * sinLon;
-    const z = (N * (1 - e2) + alt) * sinLat;
-
-    return { x, y, z };
-}
-
-function ecefToENU(pointECRF, originECEF, originLat, originLon) {
-    const lat0 = originLat * Math.PI / 180;
-    const lon0 = originLon * Math.PI / 180;
-
-    const dx = pointECRF.x - originECEF.x;
-    const dy = pointECRF.y - originECEF.y;
-    const dz = pointECRF.z - originECEF.z;
-
-    const sinLat = Math.sin(lat0);
-    const cosLat = Math.cos(lat0);
-    const sinLon = Math.sin(lon0);
-    const cosLon = Math.cos(lon0);
-
-    const east = -sinLon * dx + cosLon * dy;
-    const north = (-sinLat * cosLon * dx - sinLat * sinLon * dy + cosLat * dz) * -1;
-    const up = cosLat * cosLon * dx + cosLat * sinLon * dy + sinLat * dz;
-
-    return { east, north, up };
-}
-
-function geoToLocal(playerLocation, origin) {
-    const originECEF = geoToECEF(origin);
-
-    const pointECRF = geoToECEF(playerLocation);
-
-    const { east, north, up } = ecefToENU(pointECRF, originECEF, origin.lat, origin.lon);
-
-    return { "x": east, "y": up, "z": north }
-}
-
-function rotateCoordinates(coordinate, headingDeg) {
-
-    //console.log("Heading Deg: " + headingDeg + " Coordinate: ", coordinate);
-    const psi = headingDeg * Math.PI / 180;
-    const theta = -psi;
-
-    const cosT = Math.cos(theta);
-    const sinT = Math.sin(theta);
-
-    const x2 = coordinate.x * cosT + coordinate.z * sinT;
-    const y2 = coordinate.y;
-    const z2 = -coordinate.x * sinT + coordinate.z * cosT;
-
-    return { x: x2, y: y2, z: z2 };
-}
-
-// function getLocations(gameID) {
-//     if (checkGameExists(gameID) == false) {
-//         console.log("ERROR: GAME DOES NOT EXIST");
-//         return false;
-//     }
-//     //Could be done in one loop. Optimization for later.
-//     let playersArray = games.get(gameID).players;
-//     let locations = playersArray.filter(p => players.has(p.playerID)).map(player => ({
-//         playerID: player.playerID,
-//         location: players.get(player.playerID).location,
-//     }));
-//     for (let player of playersArray) {
-//         let playerSocket = playerSockets.get(player.playerID);
-//         if (playerSocket && playerSocket.readyState === 1) {
-//             try {
-//                 playerSocket.send(JSON.stringify({
-//                     type: "PLAYERS_UPDATE",
-//                     locations,
-//                     timestamp: Date.now()
-//                 }));
-//             } catch (err) {
-//                 console.error("Failed to send PLAYERS_UPDATE", err);
-//                 playerSockets.delete(player.playerID);
-//                 players.delete(player.playerID);
-//                 leaveGame(lookForGameWithPlayer(player.playerID), player.playerID);
-//             }
-//         } else if (!playerSocket) {
-//             if (player.playerID) {
-//                 console.error("Player socket missing:", player.playerID);
-//             } else {
-//                 console.log("Player ID is missing");
-//             }
-//         } else {
-//             if (player.playerID) {
-//                 console.error("Player socket not open:", player.playerID, playerSocket.readyState);
-//             } else {
-//                 console.log("Player ID is missing");
-//             }
-//         }
-
-//     }
-
-
-
-//     return locations;
-// }
-
 function getLocations(gameID) {
-    if (checkGameExists(gameID) == false) {
+    if (!checkGameExists(gameID)) {
         console.log("ERROR: GAME DOES NOT EXIST");
         return false;
     }
-    //Could be done in one loop. Optimization for later.
-    let playersArray = games.get(gameID).players;
-    for(let player of playersArray) {
-        arPosCalculation(player.playerID);
+
+    const playersArray = games.get(gameID).players;
+    const locations = {};
+
+    for (let p of playersArray) {
+        if (!players.has(p.playerID)) continue;
+
+        const playerData = players.get(p.playerID);
+
+        locations[p.playerID] = {
+            playerID: p.playerID,
+            location: playerData.location,
+            origin: playerData.origin
+        };
     }
+
+    const payload = {
+        type: "PLAYERS_UPDATE",
+        locations,
+        timestamp: Date.now()
+    };
+
+    for (let p of playersArray) {
+        const socket = playerSockets.get(p.playerID);
+
+        if (socket && socket.readyState === 1) {
+            try {
+                socket.send(JSON.stringify(payload));
+                console.log("Payload:"+ JSON.stringify(payload));
+            } catch (err) {
+                console.error("Failed to send PLAYERS_UPDATE", err);
+                playerSockets.delete(p.playerID);
+                players.delete(p.playerID);
+                leaveGame(lookForGameWithPlayer(p.playerID), p.playerID);
+            }
+        }
+    }
+
+    return locations;
 }
 
 function startSeekPhase(gameID) {
@@ -361,10 +212,7 @@ function startSeekPhase(gameID) {
         clearInterval(gameTimer.intervalTime);
     }
 
-
-
     game.phase = "SEEK";
-    game.block = false;
 
     gameTimer.intervalTime = setInterval(() => {
         // action every 2 seconds
@@ -394,7 +242,6 @@ function startHidePhase(gameID) {
     }
 
     game.phase = "HIDE";
-    game.block = true;
 
     gameTimer.hideTimer = setTimeout(() => {
         if (checkGameExists(gameID)) {
@@ -510,7 +357,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { y: 0, x: 0, z: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false , prevHeading: null});
+    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false , prevHeading: null});
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -522,7 +369,7 @@ export function gameManager(data, socket) {
 
     switch (data.type) {
         case "CREATE_GAME":
-            console.log("Origin: ", data.origin)
+            //console.log("Origin: ", data.origin)
             game = gameCreate(data.playerID, data.circleRadius, data.circleCenter, data.origin, socket);
             if (game == false) {
                 return { error: "player already in a game" };
@@ -557,12 +404,6 @@ export function gameManager(data, socket) {
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
             break;
-        case "GET_LOCATIONS":
-            let locations = getLocations(lookForGameWithPlayer(data.playerID));
-            if (locations == false) {
-                return { error: "game does not exist" };
-            }
-            return { locations: locations };
         case "TAG_ATTEMPT":
             //Not Implemented Yet
             console.log(`Player: ${data.infectedPlayerID} attempted to tag Player: ${data.targetPlayerID}`);
@@ -578,28 +419,17 @@ export function gameManager(data, socket) {
                 return { error: `Invalid event type: ${data.type}` };
             }
             break;
-        case "SHOW_PLAYERS":
-            let gameID3 = lookForGameWithPlayer(data.playerID);
-            if (gameID3) {
-                return getLocations(gameID3);
-            } else { 
-                return { error: `Invalid event type: ${data.type}` };
-            }
-            break;
         case "START_AR":
             updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location)
-            
             let player = players.get(data.playerID);
             if (player.prevHeading == null) {
                 player.prevHeading = data.location.heading;
                 players.set(data.playerID, { gameID: player.gameID, location: player.location, origin: player.origin, gate: player.gate, heading: player.heading, prevHeading: player.prevHeading });
             }
-
-
             // arPosCalculation(data.playerID, data.location.heading)
             break;
         case "END_AR":
-            gameTimer = gameTimers.get(lookForGameWithPlayer(data.playerID));
+            //let gameTimer = gameTimers.get(lookForGameWithPlayer(data.playerID));
             break;
         default:
             console.log("Invalid event type received: " + data.type);
