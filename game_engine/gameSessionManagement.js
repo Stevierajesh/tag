@@ -400,7 +400,7 @@ export function gameManager(data, socket) {
             //console.log("Player Location: ", data.location)
             const heading = data.location.heading
             const gameID1 = lookForGameWithPlayer(data.playerID);
-            
+
             if (!gameID1) {
                 return { error: data.playerID + " not in a game" };
             }
@@ -439,9 +439,26 @@ export function gameManager(data, socket) {
         case "LOCAL_POSITIONS":
             //const locations = getLocations(lookForGameWithPlayer(data.playerID));
 
-            let player2 = players.get(data.playerID);
-            player2.LOCAL_POSITIONS = data.location;
+            if (players.has(data.playerID) == false) {
+                console.log("ERROR: PLAYER DOES NOT EXIST");
+                return false;
+            }
 
+            let player2;
+
+
+            try {
+                player2 = players.get(data.playerID);
+                if (!player2) {
+                    console.error('Player not found for LOCAL_POSITIONS:', data.playerID);
+                }
+                if(data.location){
+                    player2.LOCAL_POSITIONS = data.location;
+                }
+            } catch (error) {
+                console.error('Error updating LOCAL_POSITIONS:', error);
+            }
+            
             if(LOGBLOCKED == false){
                 const logString = `${new Date().toISOString()},${data.playerID},${data.location.x},${data.location.y},${data.location.z}\n`;
                 fs.appendFile('local_positions_log.txt', logString, (err) => {

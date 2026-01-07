@@ -152,6 +152,7 @@ wss.on('connection', socket => {
     });
 
     socket.on('close', () => {
+        console.log('WS client disconnected');
         for (const [playerID, s] of playerSockets) {
             if (s === socket) {
                 leaveGame(lookForGameWithPlayer(playerID), playerID);
