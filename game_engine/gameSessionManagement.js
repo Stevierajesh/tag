@@ -68,13 +68,12 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
         // future: shrinkInterval, revealInterval, etc.
     });
 
-    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null});
+    players.set(playerID, { gameID: game.gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null, LOCAL_POSITIONS: { x: 0, y: 0, z: 0 } });
     console.log("Adding Socket: " + socket);
     playerSockets.set(playerID, socket);
     games.set(game.gameID, game);
     return game;
 }
-
 export function deleteGame(gameID) {
     if (checkGameExists(gameID) == false) {
         console.log("ERROR: GAME DOES NOT EXIST");
@@ -122,6 +121,8 @@ export function leaveGame(gameID, playerID) {
     return true;
 }
 
+
+
 function updateLocation(gameID, playerID, location) {
     try {
         if (checkGameExists(gameID) == false) {
@@ -139,18 +140,86 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
-    //console.log("Player Location: ", player.location);
+    console.log("Player ID: ", playerID);
+    console.log("Player Location: ", player.location);
     // player.heading = location.heading;  
 
     if (player.gate == false) {
         player.origin = location;
         player.gate = true;
+        //FOR CLIENT CODE, WILL CHANGE THIS LATER
+        editAllPlayersOriginsToAdminOrigins(gameID);
     }
-    players.set(playerID, { gameID: gameID, location: location, origin: player.origin, gate: player.gate, heading: location.heading, prevHeading: player.prevHeading});
+
+    if (LOGBLOCKED == false) {
+        const logString = `${new Date().toISOString()},${data.playerID},${data.location.x},${data.location.y},${data.location.z}\n`;
+        fs.appendFile('local_positions_log.txt', logString, (err) => {
+            if (err) {
+                console.error('Error writing to log file:', err);
+            }
+        });
+
+        LOGBLOCKED = true;
+    }
+
+
+    players.set(playerID, { gameID: gameID, location: location, origin: player.origin, gate: player.gate, heading: location.heading, prevHeading: player.prevHeading, LOCAL_POSITIONS: player.LOCAL_POSITIONS });
 
 
     return true;
 }
+
+function editAllPlayersOriginsToAdminOrigins(gameID) {
+    if (!checkGameExists(gameID)) {
+        console.log("ERROR: GAME DOES NOT EXIST");
+        return false;
+    }
+
+    let game = games.get(gameID);
+    let adminID = game.Admin;
+    let adminPlayer = players.get(adminID);
+    let adminOrigin = adminPlayer.origin;
+
+    game.players.forEach(player => {
+        let playerData = players.get(player.playerID);
+        playerData.origin = adminOrigin;
+        players.set(player.playerID, { gameID: playerData.gameID, location: playerData.location, origin: playerData.origin, gate: playerData.gate, heading: playerData.heading, prevHeading: playerData.prevHeading, LOCAL_POSITIONS: playerData.LOCAL_POSITIONS });
+    });
+
+    return true;
+}
+
+// function sendAdminOrigin(gameID) {
+
+//     if (!checkGameExists(gameID)) {
+//         console.log("ERROR: GAME DOES NOT EXIST");
+//         return false;
+//     }
+
+//     let game = games.get(gameID);
+//     let adminID = game.Admin;
+//     let adminPlayer = players.get(adminID);
+
+//     let payload = {
+//         type: "ADMIN_ORIGIN",
+//         playerID: adminID,
+//         origin: adminPlayer.origin,
+//         timestamp: Date.now()
+//     };
+
+//     game.players.forEach(player => {
+//         let playerSocket = playerSockets.get(player.playerID);
+//         if (playerSocket && playerSocket.readyState == 1) {
+//             try {
+//                 playerSocket.send(JSON.stringify(payload));
+//             } catch (err) {
+//                 console.error("Failed To Send ADMIN_ORIGIN", err);
+//             }
+//         }
+//     });
+
+//     return true;
+// }
 
 function getLocations(gameID) {
     if (!checkGameExists(gameID)) {
@@ -185,7 +254,7 @@ function getLocations(gameID) {
         if (socket && socket.readyState === 1) {
             try {
                 socket.send(JSON.stringify(payload));
-                console.log("Payload:"+ JSON.stringify(payload));
+                //console.log("Payload:"+ JSON.stringify(payload));
             } catch (err) {
                 console.error("Failed to send PLAYERS_UPDATE", err);
                 playerSockets.delete(p.playerID);
@@ -211,6 +280,8 @@ function startSeekPhase(gameID) {
     if (gameTimer.intervalTime) {
         clearInterval(gameTimer.intervalTime);
     }
+
+
 
     game.phase = "SEEK";
 
@@ -357,7 +428,7 @@ function joinGame(gameID, newplayerID, socket) {
 
 
     games.set(gameID, { ...games.get(gameID), players: playersArray });
-    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false , prevHeading: null});
+    players.set(newplayerID, { gameID: gameID, location: { lat: 0, lon: 0, alt: 0 }, origin: { x: 0, y: 0, z: 0 }, heading: null, gate: false, prevHeading: null, LOCAL_POSITIONS: { x: 0, y: 0, z: 0 } });
     playerSockets.set(newplayerID, socket);
     console.log(`Player: ${newplayerID} has joined the game`);
     return true;
@@ -393,13 +464,14 @@ export function gameManager(data, socket) {
             break;
         case "LOCATION_UPDATE":
             //console.log("Player Location: ", data.location)
-            const heading = data.location.heading;
-            //console.log("Heading: ", heading);
-            updateLocation(lookForGameWithPlayer(data.playerID), data.playerID, data.location);
-            //block using the hide timer.
-            //if(games.get(lookForGameWithPlayer(data.playerID)).block == false){
-            //arPosCalculation(data.playerID)
-            //}
+            const heading = data.location.heading
+            const gameID1 = lookForGameWithPlayer(data.playerID);
+
+            if (!gameID1) {
+                return { error: data.playerID + " not in a game" };
+            }
+            //console.log(`Player ID: ${data.playerID}, Game ID: ${gameID1}`);
+            updateLocation(gameID1, data.playerID, data.location);
             break;
         case "LEAVE_GAME":
             leaveGame(lookForGameWithPlayer(data.playerID), data.playerID);
@@ -426,10 +498,37 @@ export function gameManager(data, socket) {
                 player.prevHeading = data.location.heading;
                 players.set(data.playerID, { gameID: player.gameID, location: player.location, origin: player.origin, gate: player.gate, heading: player.heading, prevHeading: player.prevHeading });
             }
-            // arPosCalculation(data.playerID, data.location.heading)
             break;
         case "END_AR":
             //let gameTimer = gameTimers.get(lookForGameWithPlayer(data.playerID));
+            break;
+        case "LOCAL_POSITIONS":
+            //const locations = getLocations(lookForGameWithPlayer(data.playerID));
+
+            if (players.has(data.playerID) == false) {
+                console.log("ERROR: PLAYER DOES NOT EXIST");
+                return false;
+            }
+
+            let player2;
+
+
+            try {
+                player2 = players.get(data.playerID);
+                if (!player2) {
+                    console.error('Player not found for LOCAL_POSITIONS:', data.playerID);
+                }
+                if (data.location) {
+                    player2.LOCAL_POSITIONS = data.location;
+                }
+            } catch (error) {
+                console.error('Error updating LOCAL_POSITIONS:', error);
+            }
+
+
+
+            players.set(data.playerID, { gameID: player2.gameID, location: player2.location, origin: player2.origin, gate: player2.gate, heading: player2.heading, prevHeading: player2.prevHeading, LOCAL_POSITIONS: player2.LOCAL_POSITIONS });
+
             break;
         default:
             console.log("Invalid event type received: " + data.type);

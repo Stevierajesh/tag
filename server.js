@@ -23,7 +23,8 @@ const EVENTTYPES = [
     "GET_LOCATIONS",
     "END_GAME",
     "SHOW_PLAYERS",
-    "START_AR"
+    "START_AR",
+    "LOCAL_POSITIONS"
 ];
 
 const app = express();
@@ -131,6 +132,9 @@ wss.on('connection', socket => {
 
         try {
             data = JSON.parse(message.toString());
+            if(data.type === "LOCATION_UPDATE" && data.playerID == "55B80020-6EE9-47F8-8171-3E0F94B5AC06"){
+                console.log("LOCATION_UPDATE data:", data);
+            }
         } catch {
             socket.send(JSON.stringify({ error: 'Invalid JSON' }));
             return;
@@ -148,6 +152,7 @@ wss.on('connection', socket => {
     });
 
     socket.on('close', () => {
+        console.log('WS client disconnected');
         for (const [playerID, s] of playerSockets) {
             if (s === socket) {
                 leaveGame(lookForGameWithPlayer(playerID), playerID);

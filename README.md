@@ -1,10 +1,10 @@
-# Tag VPS Backend
+# Tag Backend (HTTP + WebSocket)
 
-Backend server for Tag, a real-time multiplayer infected-tag game using WebSockets.
+Backend server for Tag, a real-time multiplayer infected-tag game using WebSockets and an Express HTTP server.
 
 Players join a game, move in the real world, and periodically reveal locations for short intervals to enable AR-based tagging.
 
-The server is authoritative: it manages game state, timing, player roles, and phase transitions.
+The server is authoritative: it manages game state, timing, player roles, and phase transitions entirely in memory.
 
 ## Core Game Concept
 
@@ -15,8 +15,8 @@ Players play infected tag:
 
 Player locations are:
 
-- **Hidden** for 5 minutes
-- **Revealed** for 30 seconds
+- **Hidden** for a configurable duration (currently 0 seconds)
+- **Revealed** for a configurable duration (currently 10 seconds)
 
 This cycle repeats until:
 
@@ -33,11 +33,11 @@ The playable area is constrained by a circle that can shrink over time.
 ## Architecture Overview
 
 - **Node.js + WebSocket**
-- Single server process
+- Single server process (Express + ws)
 - One WebSocket connection per player
 - Event-driven game logic
 - Timers are owned by individual game sessions
-- All game state stored in memory (planned Redis migration)
+- All game state stored in memory
 
 ### High-Level Data Flow
 
@@ -87,19 +87,19 @@ Used for:
 - Game has not started
 - Admin can start the game
 
-### HIDE (5 minutes)
+### HIDE (configurable, currently 0s)
 
 - Player locations are hidden
 - Players move freely
-- Circle is enforced
+- Circle is enforced on the client side
 
-### SEEK / REVEAL (30 seconds)
+### SEEK / REVEAL (configurable, currently 10s)
 
 - Player locations are revealed
 - AR visualization enabled
 - Tags can be attempted
 
-The game cycles between HIDE and SEEK using server-side timers.
+The game cycles between HIDE and SEEK using server-side timers. After `START_GAME`, the server waits 5 seconds, then begins the HIDE/SEEK loop.
 
 ## Timers & Phase Control
 
@@ -108,6 +108,7 @@ Phase transitions are controlled using chained `setTimeout` calls:
 - Each game owns one active timer
 - When a phase begins, it schedules the next phase
 - When a game ends, timers stop automatically when the game is removed
+ - During SEEK, the server broadcasts `PLAYERS_UPDATE` every ~200ms
 
 This ensures:
 
@@ -126,7 +127,10 @@ Creates a new game and assigns the creator as admin and infected.
 ```json
 {
     "type": "CREATE_GAME",
-    "playerID": "p42"
+    "playerID": "p42",
+    "circleRadius": 320,
+    "circleCenter": { "x": 0, "y": 0, "z": 0 },
+    "origin": { "lat": 40.0, "lon": -83.0, "alt": 0 }
 }
 ```
 
@@ -134,6 +138,7 @@ Creates a new game and assigns the creator as admin and infected.
 
 ```json
 {
+    "type": "GAMEID",
     "gameID": "abc123"
 }
 ```
@@ -146,7 +151,7 @@ Adds a player to an existing game.
 {
     "type": "JOIN_GAME",
     "playerID": "p43",
-    "gameId": "abc123"
+    "gameID": "abc123"
 }
 ```
 
@@ -172,69 +177,12 @@ Sent frequently by clients to update their current position.
     "type": "LOCATION_UPDATE",
     "playerID": "p43",
     "location": {
-        "y": 40.21049935750206,
-        "x": -83.02927517362363,
-        "z": 276.4463550494984
+        "lat": 40.21049935750206,
+        "lon": -83.02927517362363,
+        "alt": 276.4463550494984,
+        "heading": 182.5
     },
     "timestamp": 1739999999
-}
-```
-
-### GAME_STATE [PLANNED]
-
-Sent to clients to synchronize full game state.
-
-```json
-{
-    "type": "GAME_STATE",
-    "gameID": "abc123",
-    "phase": "HIDE",
-    "circleRadius": 320,
-    "you": {
-        "playerID": "p42",
-        "role": "RUNNER",
-        "isAdmin": false
-    },
-    "players": [
-        { "playerID": "p17", "status": "INFECTED" },
-        { "playerID": "p42", "status": "RUNNER" }
-    ],
-    "nextRevealAt": 1740000300
-}
-```
-
-### REVEAL_START [[PLANNED]]
-
-Broadcast when a SEEK phase begins.
-
-```json
-{
-    "type": "REVEAL_START",
-    "revealEndsAt": 1740000330,
-    "circleRadius": 320
-}
-```
-
-### REVEAL_END [[PLANNED]]
-
-Broadcast when the reveal window ends.
-
-```json
-{
-    "type": "REVEAL_END",
-    "nextRevealAt": 1740000630,
-    "circleRadius": 272
-}
-```
-
-### TAG_RESULT [[PLANNED]]
-
-Sent when a tag is successfully registered.
-
-```json
-{
-    "type": "TAG_RESULT",
-    "infectedPlayerId": "p17"
 }
 ```
 
@@ -245,24 +193,18 @@ Broadcast to clients with current player locations during reveal phases.
 ```json
 {
   "type": "PLAYERS_UPDATE",
-  "locations": [
-    {
+  "locations": {
+    "player1": {
       "playerID": "player1",
-      "location": {
-        "x": 12.34,
-        "y": 56.78,
-        "z": 90.12
-      }
+      "location": { "lat": 40.0, "lon": -83.0, "alt": 0 },
+      "origin": { "lat": 40.0, "lon": -83.0, "alt": 0 }
     },
-    {
+    "player2": {
       "playerID": "player2",
-      "location": {
-        "x": -45.67,
-        "y": 89.01,
-        "z": -23.45
-      }
+      "location": { "lat": 40.0, "lon": -83.0, "alt": 0 },
+      "origin": { "lat": 40.0, "lon": -83.0, "alt": 0 }
     }
-  ],
+  },
   "timestamp": 1704537600000
 }
 
@@ -281,6 +223,18 @@ Removes a player from their current game.
 
 If all players leave, the game is deleted.
 
+### TAG_ATTEMPT
+
+Sent when a player attempts to tag another player (server currently only logs the attempt).
+
+```json
+{
+    "type": "TAG_ATTEMPT",
+    "infectedPlayerID": "p17",
+    "targetPlayerID": "p42"
+}
+```
+
 ### END_GAME
 
 Ends a game and removes it from memory.
@@ -288,7 +242,36 @@ Ends a game and removes it from memory.
 ```json
 {
     "type": "END_GAME",
-    "gameID": "abc123"
+    "playerID": "p42"
+}
+```
+
+### START_AR
+
+Stores the first heading reading for AR alignment.
+
+```json
+{
+    "type": "START_AR",
+    "playerID": "p42",
+    "location": {
+        "lat": 40.0,
+        "lon": -83.0,
+        "alt": 0,
+        "heading": 182.5
+    }
+}
+```
+
+### LOCAL_POSITIONS
+
+Stores client-side local AR coordinates for a player.
+
+```json
+{
+    "type": "LOCAL_POSITIONS",
+    "playerID": "p42",
+    "location": { "x": 1.2, "y": 0.0, "z": -3.4 }
 }
 ```
 
@@ -302,6 +285,22 @@ Sent when an invalid action occurs.
     "message": "Only admin can start the game"
 }
 ```
+
+## HTTP Endpoints
+
+- `GET /__debug/state`: return in-memory games/players/socket state
+- `POST /deleteGame`: delete a game by `gameID`
+- `POST /logLocations`: append a list of locations to `locations_log.txt`
+- `POST /toggleLogBlock`: allow the next location update to be logged (debug)
+
+## Running Locally
+
+```bash
+npm install
+node server.js
+```
+
+Server listens on `http://localhost:8080` and serves the `dashboard/` static UI at `/`.
 
 ## Player Identity
 
