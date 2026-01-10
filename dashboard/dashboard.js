@@ -200,6 +200,17 @@ function renderMapPlayers(game) {
 const mapToggleBtn = document.getElementById('map-toggle-btn');
 const mapModal = document.getElementById('map-modal');
 const mapCloseBtn = document.getElementById('map-close-btn');
+const mapCard = document.querySelector('.map-card');
+const mapHeader = mapCard?.querySelector('.map-header');
+const mapResizeHandles = mapCard?.querySelectorAll('.resize-handle');
+
+let mapDragState = null;
+let mapResizeState = null;
+let mapResizeTimer = null;
+let mapObserver = null;
+const MAP_MIN_WIDTH = 320;
+const MAP_MIN_HEIGHT = 240;
+const MAP_MARGIN = 8;
 
 mapToggleBtn.addEventListener('click', openMapModal);
 
@@ -219,9 +230,25 @@ mapModal.addEventListener('click', (e) => {
 
 function openMapModal() {
   mapModal.classList.remove('hidden');
+  mapModal.classList.add('tinted');
   mapToggleBtn.classList.add('active');
 
   if (!leafletMap) initMap();
+
+  if (mapCard && !mapCard.dataset.positioned) {
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    const width = Math.min(1100, Math.max(320, Math.floor(viewportW * 0.9)));
+    const height = Math.max(240, Math.floor(viewportH * 0.8));
+    const left = Math.max(12, Math.floor((viewportW - width) / 2));
+    const top = Math.max(12, Math.floor((viewportH - height) / 2));
+
+    mapCard.style.width = `${width}px`;
+    mapCard.style.height = `${height}px`;
+    mapCard.style.left = `${left}px`;
+    mapCard.style.top = `${top}px`;
+    mapCard.dataset.positioned = 'true';
+  }
 
   setTimeout(() => {
     leafletMap.invalidateSize();
@@ -235,8 +262,151 @@ function openMapModal() {
 function closeMapModal() {
   mapModal.classList.add('hidden');
   mapToggleBtn.classList.remove('active');
+  mapModal.classList.remove('tinted');
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function setMapCardPosition(left, top) {
+  if (!mapCard) return;
+  const maxLeft = window.innerWidth - mapCard.offsetWidth - MAP_MARGIN;
+  const maxTop = window.innerHeight - mapCard.offsetHeight - MAP_MARGIN;
+  mapCard.style.left = `${clamp(left, MAP_MARGIN, Math.max(MAP_MARGIN, maxLeft))}px`;
+  mapCard.style.top = `${clamp(top, MAP_MARGIN, Math.max(MAP_MARGIN, maxTop))}px`;
+}
+
+function startMapDrag(e) {
+  if (!mapCard || !mapHeader) return;
+  e.preventDefault();
+
+  const rect = mapCard.getBoundingClientRect();
+  mapDragState = {
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top
+  };
+  mapModal.classList.add('is-interacting');
+  mapModal.classList.remove('tinted');
+
+  document.addEventListener('mousemove', onMapDrag);
+  document.addEventListener('mouseup', stopMapDrag);
+}
+
+function onMapDrag(e) {
+  if (!mapDragState) return;
+  setMapCardPosition(e.clientX - mapDragState.offsetX, e.clientY - mapDragState.offsetY);
+}
+
+function stopMapDrag() {
+  if (!mapDragState) return;
+  mapDragState = null;
+  mapModal.classList.remove('is-interacting');
+  document.removeEventListener('mousemove', onMapDrag);
+  document.removeEventListener('mouseup', stopMapDrag);
+}
+
+if (mapHeader) {
+  mapHeader.addEventListener('mousedown', startMapDrag);
+}
+
+function startMapResize(e) {
+  if (!mapCard) return;
+  const handle = e.currentTarget;
+  const direction = handle?.dataset?.resize;
+  if (!direction) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const rect = mapCard.getBoundingClientRect();
+  mapResizeState = {
+    direction,
+    startX: e.clientX,
+    startY: e.clientY,
+    startWidth: rect.width,
+    startHeight: rect.height,
+    startLeft: rect.left,
+    startTop: rect.top
+  };
+  mapModal.classList.add('is-interacting');
+  mapModal.classList.remove('tinted');
+
+  document.addEventListener('mousemove', onMapResize);
+  document.addEventListener('mouseup', stopMapResize);
+}
+
+function onMapResize(e) {
+  if (!mapResizeState || !mapCard) return;
+  const { direction, startX, startY, startWidth, startHeight, startLeft, startTop } = mapResizeState;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+
+  let width = startWidth;
+  let height = startHeight;
+  let left = startLeft;
+  let top = startTop;
+
+  if (direction.includes('e')) {
+    width = startWidth + dx;
+  }
+  if (direction.includes('s')) {
+    height = startHeight + dy;
+  }
+  if (direction.includes('w')) {
+    width = startWidth - dx;
+  }
+  if (direction.includes('n')) {
+    height = startHeight - dy;
+  }
+
+  const maxWidth = window.innerWidth - MAP_MARGIN * 2;
+  const maxHeight = window.innerHeight - MAP_MARGIN * 2;
+
+  width = clamp(width, MAP_MIN_WIDTH, maxWidth);
+  height = clamp(height, MAP_MIN_HEIGHT, maxHeight);
+
+  if (direction.includes('w')) {
+    left = startLeft + (startWidth - width);
+  }
+  if (direction.includes('n')) {
+    top = startTop + (startHeight - height);
+  }
+
+  left = clamp(left, MAP_MARGIN, window.innerWidth - width - MAP_MARGIN);
+  top = clamp(top, MAP_MARGIN, window.innerHeight - height - MAP_MARGIN);
+
+  mapCard.style.width = `${width}px`;
+  mapCard.style.height = `${height}px`;
+  mapCard.style.left = `${left}px`;
+  mapCard.style.top = `${top}px`;
+}
+
+function stopMapResize() {
+  if (!mapResizeState) return;
+  mapResizeState = null;
+  mapModal.classList.remove('is-interacting');
+  document.removeEventListener('mousemove', onMapResize);
+  document.removeEventListener('mouseup', stopMapResize);
+}
+
+if (mapResizeHandles) {
+  mapResizeHandles.forEach(handle => {
+    handle.addEventListener('mousedown', startMapResize);
+  });
+}
+
+if (mapCard && 'ResizeObserver' in window) {
+  mapObserver = new ResizeObserver(() => {
+    mapModal.classList.add('is-interacting');
+    clearTimeout(mapResizeTimer);
+    mapResizeTimer = setTimeout(() => {
+      mapModal.classList.remove('is-interacting');
+    }, 150);
+    leafletMap?.invalidateSize();
+  });
+  mapObserver.observe(mapCard);
+}
 
 function centerMapOnPlayers(game) {
   if (!game || !leafletMap) return;
@@ -491,6 +661,24 @@ function renderRawState() {
 
   document.getElementById('raw-json').textContent =
     JSON.stringify(raw, null, 2);
+}
+
+const copyRawBtn = document.getElementById('copy-raw-btn');
+if (copyRawBtn) {
+  copyRawBtn.addEventListener('click', async () => {
+    const rawEl = document.getElementById('raw-json');
+    if (!rawEl) return;
+
+    try {
+      await navigator.clipboard.writeText(rawEl.textContent || '');
+      copyRawBtn.textContent = 'Copied';
+      setTimeout(() => {
+        copyRawBtn.textContent = 'Copy';
+      }, 1200);
+    } catch (err) {
+      console.error('Copy raw state failed', err);
+    }
+  });
 }
 
 /* ----------------------------- HELPERS ---------------------------------- */
