@@ -15,11 +15,11 @@ In these demonstrations we are able to see the tracking of players through struc
 
 DEMOS:
 
-
+[Demo Video](https://youtube.com/shorts/fvvykD4vzko)
 
 [Demo Video](https://youtube.com/shorts/T59pmpxyE4w)
 
-[Demo Video 2](https://youtube.com/shorts/fvvykD4vzko)
+
 
 ## Core Game Concept
 
