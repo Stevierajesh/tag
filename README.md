@@ -17,13 +17,9 @@ DEMOS:
 
 
 
-```markdown
-[![Demo Video](https://img.youtube.com/vi/T59pmpxyE4w/0.jpg)](https://youtube.com/shorts/T59pmpxyE4w)
-```
+[Demo Video](https://youtube.com/shorts/T59pmpxyE4w)
 
-```markdown
-[![Demo Video 2](https://img.youtube.com/vi/fvvykD4vzko/0.jpg)](https://youtube.com/shorts/fvvykD4vzko)
-```
+[Demo Video 2](https://youtube.com/shorts/fvvykD4vzko)
 
 ## Core Game Concept
 
