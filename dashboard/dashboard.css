@@ -8,19 +8,10 @@
   --danger: #f85149;
 }
 
-.game-details {
-  position: relative;
-}
-
 .game-actions {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
-  /* spacing between buttons */
 }
 
 .delete-game-btn,
@@ -34,7 +25,7 @@
 }
 
 
-#map-toggle-btn {
+.control-btn {
   padding: 8px 14px;
   background: var(--panel);
   color: var(--text);
@@ -45,18 +36,8 @@
   transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
 }
 
-#threedmap-toggle-btn {
-  padding: 8px 14px;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease;
-}
-
-#threedmap-toggle-btn:hover {
+#threedmap-toggle-btn:hover,
+.control-btn:hover {
   background: #1f2630;
   border-color: var(--accent);
 }
@@ -138,28 +119,24 @@
 }
 
 
-#map-toggle-btn:hover {
-  background: #1f2630;
-  border-color: var(--accent);
-}
-
-#map-toggle-btn:active {
+.control-btn:active {
   transform: scale(0.97);
 }
 
 .map-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: transparent;
   z-index: 999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: block;
 }
-
 
 .map-modal.hidden {
   display: none;
+}
+
+.map-modal.tinted {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .map-header {
@@ -169,30 +146,60 @@
   padding: 10px 14px;
   background: #0f141b;
   border-bottom: 1px solid var(--border);
-}
-
-
-#map {
-  width: 90vw;
-  height: 80vh;
-  background: #000;
+  cursor: move;
+  user-select: none;
 }
 
 #map {
   flex: 1;
+  background: #000;
 }
 
-
 .map-card {
+  position: absolute;
   width: 90vw;
   max-width: 1100px;
   height: 80vh;
+  min-width: 320px;
+  min-height: 240px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  resize: none;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 5;
+}
+
+.resize-handle.nw {
+  top: -2px;
+  left: -2px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.ne {
+  top: -2px;
+  right: -2px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.sw {
+  bottom: -2px;
+  left: -2px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.se {
+  bottom: -2px;
+  right: -2px;
+  cursor: nwse-resize;
 }
 
 
@@ -285,6 +292,7 @@ main {
   grid-template-columns: 260px 1fr 420px;
   gap: 12px;
   padding: 12px;
+  min-height: 0;
 }
 
 /* Panels */
@@ -294,6 +302,9 @@ main {
   border-radius: 6px;
   padding: 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .panel h2 {
@@ -306,6 +317,31 @@ main {
   margin: 14px 0 6px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-header h2 {
+  margin-bottom: 0;
+}
+
+.games-panel {
+  overflow: auto;
+}
+
+.game-actions-section {
+  margin-top: 10px;
+}
+
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* Games list */
@@ -383,6 +419,16 @@ th {
   border-radius: 4px;
   height: 100%;
   overflow: auto;
+}
+
+.raw-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.raw-content {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Footer */

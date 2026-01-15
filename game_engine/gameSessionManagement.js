@@ -4,9 +4,8 @@ export var games = new Map();
 
 var gameTimers = new Map();
 
-var hideTime = 0; //0 seconds
-var seekTime = 10000 //10 seconds
 var sendTime = 200; //0.5 seconds
+var seekStartDelay = 5; // delay before broadcasting locations
 
 var LOGBLOCKED = true;
 
@@ -62,9 +61,8 @@ function gameCreate(playerID, circleRadius, center, origin, socket) {
     }
 
     gameTimers.set(gameID, {
-        hideTimer: null,
-        seekTimer: null,
         intervalTime: null,
+        startDelayTimer: null,
         // future: shrinkInterval, revealInterval, etc.
     });
 
@@ -88,8 +86,7 @@ export function deleteGame(gameID) {
 
     if (gameTimers.has(gameID)) {
         let timer = gameTimers.get(gameID);
-        clearTimeout(timer.seekTimer);
-        clearTimeout(timer.hideTimer);
+        clearTimeout(timer.startDelayTimer);
         clearInterval(timer.intervalTime);
         gameTimers.delete(gameID);
     }
@@ -140,8 +137,8 @@ function updateLocation(gameID, playerID, location) {
     let player = players.get(playerID);
 
     player.location = location;
-    console.log("Player ID: ", playerID);
-    console.log("Player Location: ", player.location);
+    //console.log("Player ID: ", playerID);
+    //console.log("Player Location: ", player.location);
     // player.heading = location.heading;  
 
     if (player.gate == false) {
@@ -248,6 +245,8 @@ function getLocations(gameID) {
         timestamp: Date.now()
     };
 
+    console.log(`timestamp: ${Date.now()}`);
+
     for (let p of playersArray) {
         const socket = playerSockets.get(p.playerID);
 
@@ -273,52 +272,24 @@ function startSeekPhase(gameID) {
     const game = games.get(gameID);
     const gameTimer = gameTimers.get(gameID) ?? {};
 
-    if (gameTimer.seekTimer) {
-        clearTimeout(gameTimer.seekTimer);
+    if (gameTimer.startDelayTimer) {
+        clearTimeout(gameTimer.startDelayTimer);
     }
 
     if (gameTimer.intervalTime) {
         clearInterval(gameTimer.intervalTime);
     }
 
-
-
     game.phase = "SEEK";
 
-    gameTimer.intervalTime = setInterval(() => {
-        // action every 2 seconds
-        getLocations(gameID);
-        //console.log('sent');
-    }, sendTime);
+    gameTimer.startDelayTimer = setTimeout(() => {
+        if (!checkGameExists(gameID)) return;
+        gameTimer.intervalTime = setInterval(() => {
+            getLocations(gameID);
+        }, sendTime);
+        gameTimers.set(gameID, gameTimer);
+    }, seekStartDelay);
 
-
-    gameTimer.seekTimer = setTimeout(() => {
-        clearInterval(gameTimer.intervalTime);
-        if (checkGameExists(gameID)) {
-            startHidePhase(gameID);
-        }
-    }, seekTime);
-
-    gameTimers.set(gameID, gameTimer);
-    return true;
-}
-
-function startHidePhase(gameID) {
-    if (!checkGameExists(gameID)) return false;
-    const game = games.get(gameID);
-    const gameTimer = gameTimers.get(gameID) ?? {};
-
-    if (gameTimer.hideTimer) {
-        clearTimeout(gameTimer.hideTimer);
-    }
-
-    game.phase = "HIDE";
-
-    gameTimer.hideTimer = setTimeout(() => {
-        if (checkGameExists(gameID)) {
-            startSeekPhase(gameID);
-        }
-    }, hideTime);
     gameTimers.set(gameID, gameTimer);
     return true;
 }
@@ -331,14 +302,15 @@ function gameStart(gameID) {
     }
 
     let game = games.get(gameID);
-    game.phase = "HIDE";
+    game.phase = "SEEK";
     games.set(gameID, game);
     console.log(`Game: ${gameID} has started`);
     signalPlayersGameStart(gameID);
-    //Wait here for 5 seconds to start hide phase
+    //Wait here for 5 seconds to start seek phase
     setTimeout(() => {
-        startHidePhase(gameID);
+        startSeekPhase(gameID);
     }, 5000);
+    //startSeekPhase(gameID);
     return true;
 
 }
@@ -535,9 +507,5 @@ export function gameManager(data, socket) {
             return { error: `Invalid event type: ${data.type}` };
     }
 }
-
-
-
-
 
 

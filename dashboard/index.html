@@ -24,12 +24,6 @@
             <h2>Active Games</h2>
             <ul id="games-list">
                 <!-- populated by dashboard.js -->
-                <!--
-      <li class="game-item active">
-        <div class="game-id">game_ab12cd</div>
-        <div class="game-meta">HIDE • 4 players</div>
-      </li>
-      -->
             </ul>
         </section>
 
@@ -45,50 +39,60 @@
                 <div><label>Timer</label><span id="detail-timer">—</span></div>
             </div>
 
-            <div class="game-actions">
-                <button class="delete-game-btn">Delete Game</button>
-                <button class="log-locations-btn">Log Location</button>
-                <button class="toggle-log-block-btn">LOG AR POS</button>
-                <button id="map-toggle-btn" class="control-btn">
-                    Open Map
-                </button>
-                <button id="threedmap-toggle-btn" class="control-btn">
-                    3D View
-                </button>
+            <div class="game-actions-section">
+                <h3>Actions</h3>
+                <div class="game-actions">
+                    <button class="delete-game-btn">Delete Game</button>
+                    <button class="log-locations-btn">Log Location</button>
+                    <button class="toggle-log-block-btn">LOG AR POS</button>
+                    <button id="map-toggle-btn" class="control-btn">
+                        Open Map
+                    </button>
+                    <button id="threedmap-toggle-btn" class="control-btn">
+                        3D View
+                    </button>
+                    
 
+                </div>
             </div>
-            <br>
 
             <h3>Players</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Status</th>
-                        <th>Admin</th>
-                        <th> X</th>
-                        <th> Y</th>
-                        <th> Z</th>
-                        <th>Socket</th>
-                    </tr>
-                </thead>
-                <tbody id="players-table">
-                    <!-- populated by dashboard.js -->
-                </tbody>
-            </table>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Admin</th>
+                            <th> X</th>
+                            <th> Y</th>
+                            <th> Z</th>
+                            <th>Socket</th>
+                        </tr>
+                    </thead>
+                    <tbody id="players-table">
+                        <!-- populated by dashboard.js -->
+                    </tbody>
+                </table>
+            </div>
 
         </section>
 
         <!-- RIGHT: Raw State -->
         <section class="panel raw-panel">
-            <h2>Raw State</h2>
-            <pre id="raw-json">
+            <div class="panel-header">
+                <h2>Raw State</h2>
+                <button id="copy-raw-btn" class="control-btn copy-raw-btn">Copy</button>
+            </div>
+            <div class="raw-content">
+                <pre id="raw-json">
 {
   "games": {},
   "players": {},
   "playerSockets": {}
 }
-    </pre>
+                </pre>
+            </div>
         </section>
     </main>
 
@@ -103,6 +107,10 @@
                 <button id="map-close-btn">✕</button>
             </div>
             <div id="map"></div>
+            <div class="resize-handle nw" data-resize="nw"></div>
+            <div class="resize-handle ne" data-resize="ne"></div>
+            <div class="resize-handle sw" data-resize="sw"></div>
+            <div class="resize-handle se" data-resize="se"></div>
         </div>
     </div>
     <div id="threedmap-overlay" class="hidden">
