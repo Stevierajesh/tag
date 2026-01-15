@@ -6,6 +6,25 @@ Players join a game, move in the real world, and periodically reveal locations f
 
 The server is authoritative: it manages game state, timing, player roles, and phase transitions entirely in memory.
 
+
+
+
+## SAMPLE DEMO OF BASIC LOCATION TRACKING
+
+In these demonstrations we are able to see the tracking of players through structures using Augmented Reality paired with this server simultaniously recieiving and sending out all relative to origin player location data.
+
+DEMOS:
+
+
+
+```markdown
+[![Demo Video](https://img.youtube.com/vi/T59pmpxyE4w/0.jpg)](https://youtube.com/shorts/T59pmpxyE4w)
+```
+
+```markdown
+[![Demo Video 2](https://img.youtube.com/vi/fvvykD4vzko/0.jpg)](https://youtube.com/shorts/fvvykD4vzko)
+```
+
 ## Core Game Concept
 
 Players play infected tag:
@@ -15,10 +34,9 @@ Players play infected tag:
 
 Player locations are:
 
-- **Hidden** for a configurable duration (currently 0 seconds)
-- **Revealed** for a configurable duration (currently 10 seconds)
+- **Revealed** continuously (no hide phase currently)
 
-This cycle repeats until:
+The game runs until:
 
 - All runners are infected, or
 - The game is ended by the admin
@@ -63,7 +81,7 @@ games: Map<gameID, Game>
 
 Each game tracks:
 
-- Current phase (LOBBY, HIDE, SEEK)
+- Current phase (LOBBY, SEEK)
 - Players
 - Circle data
 - Active timer
@@ -87,28 +105,21 @@ Used for:
 - Game has not started
 - Admin can start the game
 
-### HIDE (configurable, currently 0s)
-
-- Player locations are hidden
-- Players move freely
-- Circle is enforced on the client side
-
-### SEEK / REVEAL (configurable, currently 10s)
+### SEEK / REVEAL (always on)
 
 - Player locations are revealed
 - AR visualization enabled
 - Tags can be attempted
 
-The game cycles between HIDE and SEEK using server-side timers. After `START_GAME`, the server waits 5 seconds, then begins the HIDE/SEEK loop.
+After `START_GAME`, the server waits 5 seconds, then begins broadcasting locations in SEEK.
 
 ## Timers & Phase Control
 
-Phase transitions are controlled using chained `setTimeout` calls:
+Phase transitions are controlled using a `setInterval` in SEEK:
 
 - Each game owns one active timer
-- When a phase begins, it schedules the next phase
 - When a game ends, timers stop automatically when the game is removed
- - During SEEK, the server broadcasts `PLAYERS_UPDATE` every ~200ms
+ - During SEEK, the server broadcasts `PLAYERS_UPDATE` every ~100ms, after an optional start delay
 
 This ensures:
 
@@ -166,7 +177,7 @@ Starts the game (admin only).
 }
 ```
 
-Transitions the game from LOBBY → HIDE.
+Transitions the game from LOBBY → SEEK.
 
 ### LOCATION_UPDATE
 
