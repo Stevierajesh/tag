@@ -19,11 +19,20 @@ DEMOS:
 
 [Demo Video](https://youtube.com/shorts/T59pmpxyE4w)
 
-2D Representation of Player Location On Dashboard:
+### 2D Map View (Leaflet)
+
+  A top-down map view showing each player’s current location with interactive
+  markers for quick inspection and positioning.
 ![2D Representation](MAP.png)
 
-3D Representation of Player Location On Dashboard:
+### 3D Simulation View (Three.js)
+
+  A simple 3D scene that visualizes players relative to a selected perspective,
+  helping illustrate spacing and elevation differences.
+
+
 ![3D Representation](3dMap.png)
+
 
 
 
