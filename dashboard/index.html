@@ -125,6 +125,56 @@
             </div>
         </div>
     </div>
+
+    <!-- Demo-only controls for generating screenshot-friendly game state -->
+    <button id="demo-toggle" class="demo-fab" type="button" aria-haspopup="dialog" aria-controls="demo-panel">
+        Demo Controls
+    </button>
+    <div id="demo-panel" class="demo-panel hidden" role="dialog" aria-modal="false" aria-label="Demo Controls">
+        <div class="demo-panel-header">
+            <div>
+                <strong>Demo Controls</strong>
+                <div class="demo-subtitle">Create a game, add fake players, drag markers</div>
+            </div>
+            <button id="demo-close" class="control-btn" type="button">Close</button>
+        </div>
+
+        <div class="demo-panel-body">
+            <div class="demo-row">
+                <label class="demo-label">Admin ID</label>
+                <input id="demo-admin-id" class="demo-input" placeholder="admin-1" />
+                <button id="demo-random-admin" class="control-btn" type="button">Random</button>
+            </div>
+
+            <div class="demo-row">
+                <label class="demo-label">Origin</label>
+                <input id="demo-origin-lat" class="demo-input" placeholder="lat" />
+                <input id="demo-origin-lon" class="demo-input" placeholder="lon" />
+                <input id="demo-origin-alt" class="demo-input" placeholder="alt" />
+                <button id="demo-use-map-center" class="control-btn" type="button">Use Map Center</button>
+            </div>
+
+            <div class="demo-row">
+                <label class="demo-label">Circle Radius</label>
+                <input id="demo-radius" class="demo-input" placeholder="320" />
+                <button id="demo-create-game" class="control-btn" type="button">Create Game</button>
+            </div>
+
+            <div class="demo-row demo-game-meta">
+                <div>Game: <span id="demo-game-id">—</span></div>
+                <div>Status: <span id="demo-status">Idle</span></div>
+            </div>
+
+            <div class="demo-row demo-actions">
+                <button id="demo-add-player" class="control-btn" type="button">Add Player</button>
+                <button id="demo-scatter" class="control-btn" type="button">Scatter Around Admin</button>
+                <button id="demo-clear" class="control-btn danger" type="button">Clear Demo</button>
+            </div>
+
+            <div id="demo-players" class="demo-players"></div>
+            <div class="demo-hint">Tip: open the Map and drag markers to reposition players.</div>
+        </div>
+    </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module" src="dashboard.js"></script>
 </body>

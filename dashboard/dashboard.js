@@ -8,6 +8,390 @@ let selectedGameID = null;
 let threeDViewActive = false;
 let threeDViewPlayerID = null;
 
+/* ----------------------------- DEMO CONTROLS ---------------------------- */
+const demoState = {
+  gameID: null,
+  adminID: null,
+  adminSocket: null,
+  playerSockets: new Map(), // playerID -> WebSocket
+  players: new Map() // playerID -> { lat, lon, alt }
+};
+
+function wsBaseUrl() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}`;
+}
+
+function randomDemoID(prefix = 'demo') {
+  return `${prefix}-${Math.random().toString(16).slice(2, 6)}${Math.random().toString(16).slice(2, 6)}`;
+}
+
+function setDemoStatus(text) {
+  const el = document.getElementById('demo-status');
+  if (el) el.textContent = text;
+}
+
+function setDemoGameID(gameID) {
+  const el = document.getElementById('demo-game-id');
+  if (el) el.textContent = gameID || '—';
+}
+
+function isDemoPlayer(playerID) {
+  return (
+    (demoState.adminID && playerID === demoState.adminID) ||
+    demoState.playerSockets.has(playerID)
+  );
+}
+
+function getSocketForPlayer(playerID) {
+  if (demoState.adminID && playerID === demoState.adminID) return demoState.adminSocket;
+  return demoState.playerSockets.get(playerID) || null;
+}
+
+function waitForOpen(ws, timeoutMs = 4000) {
+  return new Promise((resolve, reject) => {
+    if (ws.readyState === WebSocket.OPEN) return resolve();
+    const timeout = setTimeout(() => reject(new Error('WebSocket open timeout')), timeoutMs);
+    ws.addEventListener('open', () => {
+      clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+    ws.addEventListener('error', () => {
+      clearTimeout(timeout);
+      reject(new Error('WebSocket error'));
+    }, { once: true });
+  });
+}
+
+function waitForMessage(ws, predicate, timeoutMs = 6000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      ws.removeEventListener('message', onMessage);
+      reject(new Error('WebSocket response timeout'));
+    }, timeoutMs);
+
+    function onMessage(ev) {
+      let data;
+      try {
+        data = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      if (!predicate(data)) return;
+      clearTimeout(timeout);
+      ws.removeEventListener('message', onMessage);
+      resolve(data);
+    }
+
+    ws.addEventListener('message', onMessage);
+  });
+}
+
+async function demoCreateGame({ adminID, origin, radius }) {
+  // Close any previous demo state first.
+  demoClear({ keepUI: true });
+
+  demoState.adminID = adminID;
+  const ws = new WebSocket(wsBaseUrl());
+  demoState.adminSocket = ws;
+
+  setDemoStatus('Connecting…');
+  await waitForOpen(ws);
+
+  const payload = {
+    type: 'CREATE_GAME',
+    playerID: adminID,
+    circleRadius: radius,
+    // Dashboard displays `circleCenter.lat/lng`, so keep that shape here.
+    circleCenter: { lat: origin.lat, lng: origin.lon, alt: origin.alt ?? 0 },
+    origin: { lat: origin.lat, lon: origin.lon, alt: origin.alt ?? 0 }
+  };
+
+  ws.send(JSON.stringify(payload));
+
+  setDemoStatus('Creating game…');
+  const msg = await waitForMessage(ws, (d) => d && d.type === 'GAMEID' && d.gameID);
+
+  demoState.gameID = msg.gameID;
+  setDemoGameID(msg.gameID);
+  setDemoStatus('Game created');
+
+  // Prime admin location so they appear on the map immediately.
+  demoState.players.set(adminID, { lat: origin.lat, lon: origin.lon, alt: origin.alt ?? 0 });
+  demoSendLocation(adminID, origin.lat, origin.lon, origin.alt ?? 0);
+
+  selectedGameID = msg.gameID;
+  await fetchState();
+}
+
+async function demoAddPlayer(playerID, initialLocation) {
+  if (!demoState.gameID) throw new Error('Create a game first');
+
+  const ws = new WebSocket(wsBaseUrl());
+  await waitForOpen(ws);
+  demoState.playerSockets.set(playerID, ws);
+
+  ws.send(JSON.stringify({
+    type: 'JOIN_GAME',
+    playerID,
+    gameID: demoState.gameID
+  }));
+
+  demoState.players.set(playerID, initialLocation);
+  demoSendLocation(playerID, initialLocation.lat, initialLocation.lon, initialLocation.alt ?? 0);
+  await fetchState();
+}
+
+function demoSendLocation(playerID, lat, lon, alt = 0) {
+  const ws = getSocketForPlayer(playerID);
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type: 'LOCATION_UPDATE',
+    playerID,
+    location: { lat, lon, alt, heading: 0 },
+    timestamp: Date.now()
+  }));
+}
+
+function demoClear({ keepUI } = { keepUI: false }) {
+  try {
+    demoState.adminSocket?.close();
+  } catch { }
+  for (const ws of demoState.playerSockets.values()) {
+    try { ws.close(); } catch { }
+  }
+  demoState.gameID = null;
+  demoState.adminID = null;
+  demoState.adminSocket = null;
+  demoState.playerSockets.clear();
+  demoState.players.clear();
+
+  if (!keepUI) {
+    setDemoGameID(null);
+    setDemoStatus('Idle');
+    renderDemoPlayers();
+  }
+}
+
+function metersToDegreesLat(m) {
+  return m / 111320;
+}
+
+function metersToDegreesLon(m, atLatDeg) {
+  const latRad = (atLatDeg * Math.PI) / 180;
+  return m / (111320 * Math.cos(latRad));
+}
+
+function randBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function demoAltitudeForIndex(idx) {
+  // Keep it visually interesting in 3D without going crazy.
+  // First few players tend to be at distinct heights.
+  const presets = [0, 2, 5, 8, 12, 16];
+  if (idx < presets.length) return presets[idx];
+  return Math.round(randBetween(0, 20) * 10) / 10;
+}
+
+function getAdminLocationFallback() {
+  const admin = demoState.adminID ? demoState.players.get(demoState.adminID) : null;
+  if (admin) return admin;
+  return { lat: 40.0, lon: -83.0, alt: 0 };
+}
+
+function renderDemoPlayers() {
+  const root = document.getElementById('demo-players');
+  if (!root) return;
+
+  root.innerHTML = '';
+
+  const entries = Array.from(demoState.players.entries());
+  const nonAdmin = entries.filter(([id]) => id !== demoState.adminID);
+
+  nonAdmin.forEach(([playerID, loc]) => {
+    const card = document.createElement('div');
+    card.className = 'demo-player-card';
+
+    card.innerHTML = `
+      <div class="demo-player-title">
+        <div class="demo-player-id">${playerID}</div>
+        <button class="control-btn danger" type="button" data-action="remove">Remove</button>
+      </div>
+      <div class="demo-row">
+        <label class="demo-label">Lat</label>
+        <input class="demo-input" data-field="lat" value="${loc.lat}" />
+        <label class="demo-label">Lon</label>
+        <input class="demo-input" data-field="lon" value="${loc.lon}" />
+        <label class="demo-label">Alt</label>
+        <input class="demo-input" data-field="alt" value="${loc.alt ?? 0}" />
+      </div>
+      <div class="demo-player-actions">
+        <button class="control-btn" type="button" data-action="send">Send Location</button>
+        <button class="control-btn" type="button" data-action="nudge-n">Nudge N</button>
+        <button class="control-btn" type="button" data-action="nudge-e">Nudge E</button>
+      </div>
+    `;
+
+    card.querySelector('[data-action="remove"]')?.addEventListener('click', () => {
+      const ws = demoState.playerSockets.get(playerID);
+      try { ws?.close(); } catch { }
+      demoState.playerSockets.delete(playerID);
+      demoState.players.delete(playerID);
+      renderDemoPlayers();
+      fetchState();
+    });
+
+    card.querySelector('[data-action="send"]')?.addEventListener('click', () => {
+      const lat = Number(card.querySelector('[data-field="lat"]')?.value);
+      const lon = Number(card.querySelector('[data-field="lon"]')?.value);
+      const alt = Number(card.querySelector('[data-field="alt"]')?.value || 0);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      demoState.players.set(playerID, { lat, lon, alt });
+      demoSendLocation(playerID, lat, lon, alt);
+    });
+
+    card.querySelector('[data-action="nudge-n"]')?.addEventListener('click', () => {
+      const current = demoState.players.get(playerID);
+      if (!current) return;
+      const next = { ...current, lat: current.lat + metersToDegreesLat(10) };
+      demoState.players.set(playerID, next);
+      renderDemoPlayers();
+      demoSendLocation(playerID, next.lat, next.lon, next.alt ?? 0);
+    });
+
+    card.querySelector('[data-action="nudge-e"]')?.addEventListener('click', () => {
+      const current = demoState.players.get(playerID);
+      if (!current) return;
+      const next = { ...current, lon: current.lon + metersToDegreesLon(10, current.lat) };
+      demoState.players.set(playerID, next);
+      renderDemoPlayers();
+      demoSendLocation(playerID, next.lat, next.lon, next.alt ?? 0);
+    });
+
+    root.appendChild(card);
+  });
+}
+
+function setupDemoPanel() {
+  const toggle = document.getElementById('demo-toggle');
+  const panel = document.getElementById('demo-panel');
+  const close = document.getElementById('demo-close');
+  if (!toggle || !panel || !close) return;
+
+  const adminInput = document.getElementById('demo-admin-id');
+  const originLat = document.getElementById('demo-origin-lat');
+  const originLon = document.getElementById('demo-origin-lon');
+  const originAlt = document.getElementById('demo-origin-alt');
+  const radiusInput = document.getElementById('demo-radius');
+
+  function open() {
+    panel.classList.remove('hidden');
+    toggle.setAttribute('aria-expanded', 'true');
+
+    if (adminInput && !adminInput.value) adminInput.value = randomDemoID('admin');
+    if (originLat && !originLat.value) originLat.value = '40.0000';
+    if (originLon && !originLon.value) originLon.value = '-83.0000';
+    if (originAlt && !originAlt.value) originAlt.value = '0';
+    if (radiusInput && !radiusInput.value) radiusInput.value = '320';
+
+    renderDemoPlayers();
+  }
+
+  function closePanel() {
+    panel.classList.add('hidden');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  toggle.addEventListener('click', () => {
+    if (panel.classList.contains('hidden')) open();
+    else closePanel();
+  });
+  close.addEventListener('click', closePanel);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.classList.contains('hidden')) closePanel();
+  });
+
+  document.getElementById('demo-random-admin')?.addEventListener('click', () => {
+    if (!adminInput) return;
+    adminInput.value = randomDemoID('admin');
+  });
+
+  document.getElementById('demo-use-map-center')?.addEventListener('click', () => {
+    if (!leafletMap) return;
+    const c = leafletMap.getCenter();
+    if (originLat) originLat.value = c.lat.toFixed(6);
+    if (originLon) originLon.value = c.lng.toFixed(6);
+  });
+
+  document.getElementById('demo-create-game')?.addEventListener('click', async () => {
+    try {
+      const adminID = (adminInput?.value || '').trim();
+      const lat = Number(originLat?.value);
+      const lon = Number(originLon?.value);
+      const alt = Number(originAlt?.value || 0);
+      const radius = Number(radiusInput?.value || 320);
+      if (!adminID) throw new Error('Missing admin ID');
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Invalid origin');
+
+      setDemoStatus('Working…');
+      await demoCreateGame({ adminID, origin: { lat, lon, alt }, radius });
+
+      // Ensure UI list includes admin, but we don't render an admin card (it’s the anchor).
+      demoState.players.set(adminID, { lat, lon, alt });
+      renderDemoPlayers();
+    } catch (err) {
+      console.error(err);
+      setDemoStatus(`Error: ${err.message || 'failed'}`);
+    }
+  });
+
+  document.getElementById('demo-add-player')?.addEventListener('click', async () => {
+    try {
+      const adminLoc = getAdminLocationFallback();
+      const playerID = randomDemoID('p');
+      // Spawn close to admin (roughly within 2–10 meters) for screenshot readability.
+      const r = randBetween(2, 10);
+      const a = randBetween(0, Math.PI * 2);
+      const jitterLat = metersToDegreesLat(Math.sin(a) * r);
+      const jitterLon = metersToDegreesLon(Math.cos(a) * r, adminLoc.lat);
+      const idx = demoState.players.size; // includes admin; good enough for variety
+      const loc = { lat: adminLoc.lat + jitterLat, lon: adminLoc.lon + jitterLon, alt: demoAltitudeForIndex(idx) };
+      await demoAddPlayer(playerID, loc);
+      renderDemoPlayers();
+      setDemoStatus('Player added');
+    } catch (err) {
+      console.error(err);
+      setDemoStatus(`Error: ${err.message || 'failed'}`);
+    }
+  });
+
+  document.getElementById('demo-scatter')?.addEventListener('click', () => {
+    const adminLoc = getAdminLocationFallback();
+    const ids = Array.from(demoState.players.keys()).filter((id) => id !== demoState.adminID);
+    ids.forEach((playerID, idx) => {
+      const angle = (idx / Math.max(1, ids.length)) * Math.PI * 2;
+      // Tight ring around admin (3–12 meters), good for screenshots.
+      const radiusM = 3 + (idx % 10);
+      const dLat = metersToDegreesLat(Math.sin(angle) * radiusM);
+      const dLon = metersToDegreesLon(Math.cos(angle) * radiusM, adminLoc.lat);
+      const prev = demoState.players.get(playerID);
+      const alt = (prev?.alt ?? demoAltitudeForIndex(idx + 1));
+      const next = { lat: adminLoc.lat + dLat, lon: adminLoc.lon + dLon, alt };
+      demoState.players.set(playerID, next);
+      demoSendLocation(playerID, next.lat, next.lon, next.alt ?? 0);
+    });
+    renderDemoPlayers();
+    setDemoStatus('Scattered');
+  });
+
+  document.getElementById('demo-clear')?.addEventListener('click', () => {
+    demoClear();
+    fetchState();
+  });
+}
+
 setInterval(() => {
   if (!threeDViewActive || !threeDViewPlayerID) return;
   updatePlayerMeshes();
@@ -184,14 +568,32 @@ function renderMapPlayers(game) {
     const { lat, lon } = live.location;
 
     if (!playerMarkers[p.playerID]) {
-      playerMarkers[p.playerID] = L.marker([lat, lon])
+      const draggable = isDemoPlayer(p.playerID);
+      playerMarkers[p.playerID] = L.marker([lat, lon], { draggable })
         .addTo(leafletMap)
         .bindPopup(`
           <b>${p.playerID}</b><br/>
-          Status: ${p.status}
+          Status: ${p.status}${draggable ? '<br/>Drag to move' : ''}
         `);
+
+      if (draggable) {
+        playerMarkers[p.playerID].on('dragend', () => {
+          const ll = playerMarkers[p.playerID].getLatLng();
+          const prev = demoState.players.get(p.playerID) || {};
+          const next = { lat: ll.lat, lon: ll.lng, alt: prev.alt ?? 0 };
+          demoState.players.set(p.playerID, next);
+          renderDemoPlayers();
+          demoSendLocation(p.playerID, next.lat, next.lon, next.alt ?? 0);
+        });
+      }
     } else {
       playerMarkers[p.playerID].setLatLng([lat, lon]);
+
+      // If a player becomes a demo-controlled socket after marker creation, enable dragging.
+      const shouldDrag = isDemoPlayer(p.playerID);
+      const marker = playerMarkers[p.playerID];
+      if (shouldDrag && marker?.dragging && !marker.dragging.enabled()) marker.dragging.enable();
+      if (!shouldDrag && marker?.dragging && marker.dragging.enabled()) marker.dragging.disable();
     }
   });
 }
@@ -816,3 +1218,5 @@ function updatePlayerMeshes() {
 
 fetchState();
 setInterval(fetchState, REFRESH_INTERVAL);
+
+setupDemoPanel();

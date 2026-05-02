@@ -150,3 +150,19 @@
     "alt": 281.31550129689276
   }
 }
+{
+  "playerID": "admin-85eb70f9",
+  "location": {
+    "lon": -83,
+    "lat": 40,
+    "alt": 0
+  }
+}
+{
+  "playerID": "admin-088cbd73",
+  "location": {
+    "lon": -83,
+    "lat": 40,
+    "alt": 0
+  }
+}
